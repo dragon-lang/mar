@@ -33,6 +33,16 @@ auto indexOf(T, U)(T arr, U elem)
     }
     return arr.length;
 }
+auto lastIndexOf(T, U)(T arr, U elem)
+{
+    foreach_reverse(i; 0 .. arr.length)
+    {
+        if (arr[i] is elem)
+            return i;
+    }
+    return arr.length;
+}
+
 auto find(T, U)(inout(T)* ptr, const(T)* limit, U elem)
 {
     for (;ptr < limit; ptr++)

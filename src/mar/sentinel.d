@@ -78,6 +78,11 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         {
              return ConstPtr(cast(const(T)*)_ptr);
         }
+        pragma(inline)
+        ConstPtr asImmutable() inout
+        {
+             return ImmutablePtr(cast(immutable(T)*)_ptr);
+        }
 
         pragma(inline)
         auto withConstPtr() inout
@@ -92,7 +97,6 @@ private template SentinelTemplate(T, immutable T sentinelValue)
                 return asConst();
             }
         }
-
 
         /**
         Converts the ptr to an array by "walking" it for the sentinel value to determine its length.
@@ -274,6 +278,7 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         mixin WrapOpUnary;
 
         pragma(inline) SentinelPtr ptr() const { return SentinelPtr(cast(SpecificT*)array.ptr); }
+        pragma(inline) auto opDollar() const { return array.length; }
 
         pragma(inline) ConstArray asConst() inout { return ConstArray(cast(const(T)[])array); }
 

@@ -10,6 +10,7 @@ import mar.linux.syscall;
 alias mkdir    = sys_mkdir;
 alias rmdir    = sys_rmdir;
 alias link     = sys_link;
+alias unlink   = sys_unlink;
 alias getcwd   = sys_getcwd;
 alias chdir    = sys_chdir;
 alias chroot   = sys_chroot;

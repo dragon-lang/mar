@@ -26,3 +26,15 @@ Currently there's no build.  If you want to use it, you can add the following ar
 > `-i=mar` compile all imported modules from the mar package
 
 This will cause the compiler to compile any modules from mar alongside your own application.
+
+# Test
+
+```
+cd test
+./go.d
+```
+
+# TODO
+
+* probably rename mar.format to mar.print
+* probably use method `print` instead of `toString`

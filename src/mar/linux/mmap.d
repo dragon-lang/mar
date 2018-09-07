@@ -10,6 +10,7 @@ import mar.linux.syscall;
 
 alias mmap   = sys_mmap;
 alias munmap = sys_munmap;
+alias mremap   = sys_mremap;
 
 enum PROT_NONE   = 0b0000;
 enum PROT_READ   = 0b0001;
@@ -21,11 +22,14 @@ enum MAP_PRIVATE   = 0b00_0010;
 enum MAP_FIXED     = 0b01_0000;
 enum MAP_ANONYMOUS = 0b10_0000;
 
+enum MREMAP_MAYMOVE = 1;
+enum MREMAP_FIXED   = 2;
+
 enum MS_ASYNC      = 1;
 enum MS_INVALIDATE = 2;
 enum MS_SYNC       = 4;
-extern(C) int msync(void* addr, size_t length, int flags);
 
+extern(C) int msync(void* addr, size_t length, int flags);
 
 struct MemoryMap
 {

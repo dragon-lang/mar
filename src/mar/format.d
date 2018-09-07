@@ -290,13 +290,7 @@ struct StringPrinter
     private auto capacity() const { return buffer.length - bufferedLength; }
     private void enforceCapacity(size_t needed)
     {
-        if (capacity < needed)
-        {
-            import mar.file : print, stderr;
-            import mar.process : exit;
-            print(stderr, "Error: string of size ", buffer.length, " is not large enough\n");
-            exit(1);
-        }
+        assert(capacity >= needed, "StringPrinter capacity is too small");
     }
 
     //

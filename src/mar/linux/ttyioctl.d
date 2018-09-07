@@ -314,3 +314,10 @@ auto tcgetattr(FileD fd, termios* arg)
 {
     return ioctl(fd, TCGETS, arg);
 }
+
+bool isatty(FileD fd)
+{
+    termios term;
+    auto result = tcgetattr(fd, &term);
+    return result.passed;
+}

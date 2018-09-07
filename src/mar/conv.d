@@ -5,6 +5,12 @@ import mar.flag;
 import mar.traits : isArithmetic;
 import mar.typecons : Nullable, nullable;
 
+pragma(inline)
+auto staticCast(T, U)(auto ref U value)
+{
+    return *cast(T*)&value;
+}
+
 string asString(Enum)(Enum enumValue, string missingValue = null) if ( is(Enum == enum) )
 {
     switch (enumValue)

@@ -85,6 +85,7 @@ private void octalToHexImpl(char[] hexLit, const(char)* octLit, size_t octLength
     hexLit[0] = '0';
 }
 
+version (D_BetterC) { } else
 unittest
 {
     assert("0x0"   == "0".octalToHex);

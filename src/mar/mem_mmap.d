@@ -4,7 +4,8 @@ An extremely dumb and expensive version of malloc.
 module mar.mem_mmap;
 
 import mar.linux.file : FileD;
-import mar.linux.mmap : mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS;
+import mar.linux.mmap : mmap, munmap, mremap, PROT_READ, PROT_WRITE,
+    MAP_PRIVATE, MAP_ANONYMOUS, MREMAP_MAYMOVE;
 
 void* malloc(size_t size)
 {
@@ -14,10 +15,22 @@ void* malloc(size_t size)
     if (map.failed)
         return null;
     (cast(size_t*)map.val)[0] = size;
+    version (TraceMallocFree)
+    {
+        import mar.file : print, stdout;
+        import mar.format : formatHex;
+        print(stdout, "malloc(", size, ") > ", formatHex(map.val + size_t.sizeof), "\n");
+    }
     return map.val + size_t.sizeof;
 }
 void free(void* mem)
 {
+    version (TraceMallocFree)
+    {
+        import mar.file : print, stdout;
+        import mar.format : formatHex;
+        print(stdout, "free(", formatHex(mem), ")\n");
+    }
     if (mem)
     {
         mem = (cast(ubyte*)mem) - size_t.sizeof;
@@ -27,12 +40,29 @@ void free(void* mem)
     }
 }
 
+// Returns: true if it resized, false otherwise
+bool tryRealloc(void* mem, size_t size)
+{
+    version (TraceMallocFree)
+    {
+        import mar.file : print, stdout;
+        import mar.format : formatHex;
+        print(stdout, "realloc(", formatHex(mem), ", ", size, ") > ", formatHex(map.val + size_t.sizeof), "\n");
+    }
+    if (mem is null)
+        return false;
+    size += size_t.sizeof;
+    auto base = mem - size_t.sizeof;
+    return mremap(base, (cast(size_t*)base)[0], size, 0).failed ? false : true;
+}
+
 unittest
 {
+    import mar.array;
     {
         auto result = malloc(100);
         assert(result);
-        (cast(char*)result)[0 .. 10] = "1234567890";
+        acopy(result, "1234567890");
         assert((cast(char*)result)[0 .. 10] == "1234567890");
         free(result);
     }

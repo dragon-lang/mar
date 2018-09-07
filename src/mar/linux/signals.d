@@ -79,15 +79,21 @@ union sigval
 }
 struct siginfo_t
 {
-    int si_signo;
-    int si_code;
+    size_t what_is_this1; // maybe signo?
+    size_t what_is_this2; // maybe si_code?
+    uint what_is_this3;   // maybe si_errno?
+    uint what_is_this4;
+    int si_status;
+    /+
+    I don't know the exact sizes of these fields or their exact position yet.
     sigval si_value;
     int si_errno;
+    int si_status;
     pid_t si_pid;
     uid_t si_uid;
     void* si_addr;
-    int si_status;
     int si_band;
+    +/
 }
 
 struct sigaction_t
@@ -140,6 +146,11 @@ auto sigaction(int signum, const(sigaction_t)* act, sigaction_t* oldact)
         kact.sa_mask = act.sa_mask;
     }
     return sys_rt_sigaction(signum, act ? &kact : null, oldact, sigset_t.sizeof);
+}
+
+void sigfillset(sigset_t* set)
+{
+    set.sig[] = 0;
 }
 
 extern (C) void sigreturn()

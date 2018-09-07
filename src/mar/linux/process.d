@@ -1,5 +1,6 @@
 module mar.linux.process;
 
+import mar.expect;
 import mar.sentinel : SentinelPtr;
 import mar.c : cstring;
 import mar.linux.syscall;
@@ -112,3 +113,34 @@ enum SCHED_FLAG_DL_OVERRUN    = 0x04;
 enum SCHED_FLAG_ALL = (SCHED_FLAG_RESET_ON_FORK |
                        SCHED_FLAG_RECLAIM       |
                        SCHED_FLAG_DL_OVERRUN);
+
+mixin ExpectMixin!("WaitResult", int,
+    ErrorCase!("waitFailed", "wait failed, returned %", ptrdiff_t));
+WaitResult wait(pid_t pid)
+{
+    import mar.linux.signals : siginfo_t;
+    siginfo_t info;
+    auto result = waitid(idtype_t.pid, pid, &info, WEXITED, null);
+    if (result.failed)
+        return WaitResult.waitFailed(result.numval);
+    return WaitResult.success(info.si_status);
+}
+
+/+
+Expected!pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
+{
+    // TODO: maybe I'm supposed to use posix_spawn instead of fork/exec?
+    //auto pid = vfork();
+    auto pidResult = fork();
+    if (pidResult.failed)
+        return unexpected("fork failed, returned ", pidResult.numval);
+
+    if (pidResult.val == 0)
+    {
+        auto result = execve(argv[0], argv, envp);
+        //logError("execve returned ", result.numval);
+        exit(1);
+    }
+    return typeof(return)(pidResult.val);
+}
++/

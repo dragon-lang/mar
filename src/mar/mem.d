@@ -9,6 +9,19 @@ else
     static import core.stdc.stdlib;
     alias malloc = core.stdc.stdlib.malloc;
     alias free = core.stdc.stdlib.free;
+    alias realloc = core.stdc.stdlib.realloc;
+    // Returns: true if it resized, false otherwise
+    bool tryRealloc(void* mem, size_t size)
+    {
+        if (mem is null)
+            return false;
+        auto result = realloc(mem, size);
+        if (result is mem)
+            return true; // success
+        // NOTE: this is not ideal
+        free(result);
+        return false;
+    }
 }
 
 version (NoStdc)

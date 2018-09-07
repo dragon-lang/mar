@@ -15,20 +15,17 @@ alias string = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
-extern (C) void __assert(bool cond, const(char)[] msg)
+// The D compiler reduces assert statements to different code that calls one of these variants
+// depending on the CRuntime version.  Note that this doesn't mean that we are actually using
+// the cruntime.
+version (CRuntime_Glibc)
 {
-    // would be nice to get a stack trace
-    if (!cond)
+    extern (C) void __assert(const(char)* errorMessage, const(char)* file, uint line) /*@trusted nothrow @nogc*/
     {
-        version (linux)
-        {
-            import mar.linux.file : stderr, write;
-            import mar.linux.process : exit;
-        }
-        else static assert(0, __FUNCTION__ ~ " not implemented on this platform");
-        write(stderr, "assert failed: ");
-        write(stderr, msg);
-        write(stderr, "\n");
+        import mar.process : exit;
+        import mar.sentinel : assumeSentinel;
+        import mar.linux.file : print, stderr;
+        print(stderr, file.assumeSentinel, "(", line, ") assert failed: ", errorMessage.assumeSentinel, "\n");
         exit(1);
     }
 }

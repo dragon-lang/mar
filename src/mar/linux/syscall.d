@@ -326,6 +326,10 @@ extern (C) SyscallExpectZero sys_link(cstring oldname, cstring newname)
 {
     mixin(passthroughSyscall);
 }
+extern (C) SyscallExpectZero sys_unlink(cstring pathname)
+{
+    mixin(passthroughSyscall);
+}
 extern (C) SyscallExpectZero sys_chdir(cstring path)
 {
     mixin(passthroughSyscall);
@@ -336,6 +340,12 @@ extern (C) SyscallValueResult!(ubyte*) sys_mmap(void* addr, size_t length,
 {
     mixin(passthroughSyscall4);
 }
+extern (C) SyscallValueResult!(ubyte*) sys_mremap(void* addr, size_t oldSize,
+    size_t newSize, uint flags)
+{
+    mixin(passthroughSyscall4);
+}
+
 extern (C) SyscallExpectZero sys_munmap(ubyte* addr, size_t length)
 {
     mixin(passthroughSyscall);
@@ -431,7 +441,7 @@ extern (C) SyscallValueResult!pid_t sys_setsid()
     mixin(passthroughSyscall);
 }
 
-extern (C) void sys_exit(int status)
+extern (C) void sys_exit(ptrdiff_t status)
 {
     mixin(passthroughSyscall);
 }
@@ -454,10 +464,8 @@ extern (C) SyscallExpectZero sys_capset(cap_user_header_t header, const cap_user
     mixin(passthroughSyscall);
 }
 
-extern (C) SyscallValueResult!pid_t sys_clone(ExtraArgs...)(int function(void*) fn, void* child_stack,
-    uint flags, void* arg, ExtraArgs extraArgs)
+extern (C) SyscallValueResult!pid_t sys_clone(size_t flags, void* childStack, void* parentTid, void* childTid)
 {
-    //????? WHAT TO DO ABOUT VARG ?????
     mixin(passthroughSyscall4);
 }
 

@@ -30,7 +30,7 @@ alias cdstring = SentinelPtr!(const(dchar));
 version(unittest)
 {
     // demonstrate that C functions can be redefined using SentinelPtr
-    extern(C) size_t strlen(cstring str);
+    import mar.string : strlen;
 }
 
 unittest
@@ -50,9 +50,10 @@ unittest
 unittest
 {
     import mar.sentinel;
+    import mar.array;
 
     char[10] buffer = void;
-    buffer[0 .. 5] = "hello";
+    acopy(buffer.ptr, "hello");
     buffer[5] = '\0';
     SentinelArray!char hello = buffer[0..5].verifySentinel;
     assert(5 == strlen(hello.ptr));
