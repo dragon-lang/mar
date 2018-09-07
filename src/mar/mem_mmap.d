@@ -17,9 +17,8 @@ void* malloc(size_t size)
     (cast(size_t*)map.val)[0] = size;
     version (TraceMallocFree)
     {
-        import mar.file : print, stdout;
-        import mar.format : formatHex;
-        print(stdout, "malloc(", size, ") > ", formatHex(map.val + size_t.sizeof), "\n");
+        import mar.file : stdout;
+        stdout.write("malloc(", size, ") > ", (map.val + size_t.sizeof), "\n");
     }
     return map.val + size_t.sizeof;
 }
@@ -27,9 +26,8 @@ void free(void* mem)
 {
     version (TraceMallocFree)
     {
-        import mar.file : print, stdout;
-        import mar.format : formatHex;
-        print(stdout, "free(", formatHex(mem), ")\n");
+        import mar.file : stdout;
+        stdout.write("free(0x", mem, ")\n");
     }
     if (mem)
     {
@@ -45,9 +43,8 @@ bool tryRealloc(void* mem, size_t size)
 {
     version (TraceMallocFree)
     {
-        import mar.file : print, stdout;
-        import mar.format : formatHex;
-        print(stdout, "realloc(", formatHex(mem), ", ", size, ") > ", formatHex(map.val + size_t.sizeof), "\n");
+        import mar.file : stdout;
+        stdout.write("realloc(", mem, ", ", size, ") > ", (map.val + size_t.sizeof), "\n");
     }
     if (mem is null)
         return false;

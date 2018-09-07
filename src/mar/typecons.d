@@ -118,8 +118,8 @@ auto enforce(T, U...)(T value, U errorMsgArgs)
     if (value.failed)
     {
         import mar.process : exit;
-        import mar.file : print, stderr;
-        print(stderr, errorMsgArgs);
+        import mar.file : stderr;
+        stderr.write(errorMsgArgs);
         exit(1);
     }
     return value.val;

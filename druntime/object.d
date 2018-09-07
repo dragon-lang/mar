@@ -24,8 +24,8 @@ version (CRuntime_Glibc)
     {
         import mar.process : exit;
         import mar.sentinel : assumeSentinel;
-        import mar.linux.file : print, stderr;
-        print(stderr, file.assumeSentinel, "(", line, ") assert failed: ", errorMessage.assumeSentinel, "\n");
+        import mar.linux.file : stderr;
+        stderr.write(file.assumeSentinel, "(", line, ") assert failed: ", errorMessage.assumeSentinel, "\n");
         exit(1);
     }
 }

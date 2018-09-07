@@ -32,23 +32,27 @@ struct FileD
     mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
-    void toString(Printer)(Printer printer) const
+    void print(P)(P printer) const
     {
-        import mar.format : printDecimal;
+        import mar.print : printDecimal;
         printDecimal(printer, _value);
     }
 
-    /*
-    A convenience function, however, it bloats the API by creating multiple ways to
-    do the same thing (i.e. print(stdout, ...) or stdout.print(...)).  Leaving this out
-    for now.
-
-    pragma(inline)
-    void print(T...)(T args)
+    void write(T...)(T args) const
     {
-        filePrint(this, args);
+        import mar.print : DefaultBufferedFilePrinterPolicy, BufferedFilePrinter, printArgs;
+        alias Printer = BufferedFilePrinter!DefaultBufferedFilePrinterPolicy;
+
+        char[DefaultBufferedFilePrinterPolicy.bufferLength] buffer;
+        auto printer = Printer(this, buffer.ptr, 0);
+        printArgs(&printer, args);
+        printer.flush();
     }
-    */
+    pragma(inline)
+    void writeln(T...)(T args) const
+    {
+        write(args, '\n');
+    }
 }
 
 pragma(inline) const(FileD) stdin() pure nothrow @nogc { return FileD(0); }
@@ -60,18 +64,6 @@ auto write(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
 {
     return sys_write(fd, cast(const(void)*)buffer.ptr, buffer.length);
 }
-
-void print(T...)(FileD fd, T args)
-{
-    import mar.format : DefaultBufferedFilePrinterPolicy, BufferedFilePrinter, argsToPrinter;
-    alias Printer = BufferedFilePrinter!DefaultBufferedFilePrinterPolicy;
-
-    char[DefaultBufferedFilePrinterPolicy.bufferLength] buffer;
-    auto printer = Printer(fd, buffer.ptr, 0);
-    argsToPrinter(&printer, args);
-    printer.flush();
-}
-
 
 pragma(inline)
 auto read(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
@@ -184,7 +176,7 @@ auto formatMode(mode_t mode)
     static struct Formatter
     {
         mode_t mode;
-        void toString(Printer)(Printer printer) const
+        void print(P)(P printer) const
         {
             auto buffer = printer.getTempBuffer!10;
             scope (exit) printer.commitBuffer(buffer.commitValue);

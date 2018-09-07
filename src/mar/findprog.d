@@ -30,9 +30,9 @@ cstring getFileIfExists(const(char)[] dir, const(char)[] basename)
 {
     // TODO: use alloca?
     import mar.mem : free;
-    import mar.format : sprintMallocSentinel;
+    import mar.print : sprintMallocSentinel;
     auto temp = sprintMallocSentinel(dir, "/", basename);
-    //import mar.file; print(stdout, "[DEBUG] checking '", temp, "'...\n");
+    //import mar.file; stdout.write("[DEBUG] checking '", temp, "'...\n");
     if (fileExists(temp.ptr))
         return temp.ptr;
 

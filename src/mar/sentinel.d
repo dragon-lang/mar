@@ -131,11 +131,18 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         pragma(inline)
         void popFront() { _ptr++; }
 
-        static if (is(T == char) && sentinelValue == '\0')
+        static if (is(T == char))
         {
-            import mar.c : cstring;
-            pragma(inline)
-            auto asCString() const { return cast(typeof(this))this; }
+            static if(sentinelValue == '\0')
+            {
+                import mar.c : cstring;
+                pragma(inline)
+                auto asCString() const { return cast(typeof(this))this; }
+            }
+            void print(P)(P printer) const
+            {
+                printer.put(_ptr[0 .. walkLength()]);
+            }
         }
         bool contains(U)(U value)
         {

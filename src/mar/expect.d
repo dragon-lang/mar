@@ -6,7 +6,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
         char[50] numBuffer;
         char[] str(size_t num)
         {
-            import mar.format : sprint;
+            import mar.print : sprint;
             return numBuffer[0 .. sprint(numBuffer, num)];
         }
 
@@ -82,13 +82,13 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
         if (failed)
         {
             import mar.process : exit;
-            import mar.file : stderr, print;
-            print(stderr, "Error: ", this, "\n");
+            import mar.file : stderr;
+            stderr.write("Error: ", this, "\n");
             exit(1);
         }
     }
 };
-        code ~= "    void toString(Printer)(Printer printer) const\n";
+        code ~= "    void print(P)(P printer) const\n";
         code ~= "    {\n";
         code ~= "        final switch (state)\n";
         code ~= "        {\n";
@@ -127,15 +127,15 @@ unittest
             ErrorCase!("readFailed", "read failed, returned %", ptrdiff_t));
         {
             auto result = ReadLineResult.success(0);
-            //import mar.file; print(stdout, "result: ", result, "\n");
+            //import mar.file; stdout.write("result: ", result, "\n");
         }
         {
             auto result = ReadLineResult.outOfMemory();
-            //import mar.file; print(stdout, "result: ", result, "\n");
+            //import mar.file; stdout.write("result: ", result, "\n");
         }
         {
             auto result = ReadLineResult.readFailed(100);
-            //import mar.file; print(stdout, "result: ", result, "\n");
+            //import mar.file; stdout.write("result: ", result, "\n");
         }
     }
 }

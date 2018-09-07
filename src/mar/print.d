@@ -1,52 +1,36 @@
-module mar.format;
+module mar.print;
 
 import mar.traits : isArithmetic, Unqual;
 import mar.sentinel : SentinelArray;
 
-auto argsToPrinter(Printer, T...)(Printer printer, T args)
+auto printArgs(Printer, T...)(Printer printer, T args)
 {
-    import mar.array : acopy;
     import mar.string : isStringLike;
 
     foreach (arg; args)
     {
-        //pragma(msg, typeof(arg).stringof);
-
-
-        // TODO: handle wrapper types!
-
-        //static if (is(typeof(arg.toString(printer))))
-        //static if (__traits(compiles, arg.toString(printer)))
-        static if (__traits(hasMember, arg, "toString"))
+        //static if (is(typeof(arg.print(printer))))
+        //static if (__traits(compiles, arg.print(printer)))
+        static if (__traits(hasMember, arg, "print"))
         {
-            arg.toString(printer);
+            arg.print(printer);
         }
         else static if (isStringLike!(typeof(arg)))
         {
-            //pragma(msg, "  isStringLike");
             printer.put(cast(const(char)[])arg);
         }
         else static if (is(typeof(arg) == char))
         {
-            //pragma(msg, "  is a char");
             printer.putc(arg);
-        }
-        else static if (isArithmetic!(typeof(arg)))
-        {
-            //pragma(msg, "  integral");
-            printDecimal(printer, arg);
         }
         else static if (is(typeof(arg) == void*))
         {
-            //pragma(msg, "  void*");
-            printDecimal(printer, cast(size_t)arg);
+            printHex(printer, cast(size_t)arg);
         }
-        else static if (is(typeof(arg.asCString)))
+        //else static if (isArithmetic!(typeof(arg)))
+        else static if (__traits(compiles, printDecimal(printer, arg)))
         {
-            import mar.string : strlen;
-            auto cString = arg.asCString;
-            size_t size = strlen(cString);
-            printer.put(cString[0 .. size]);
+            printDecimal(printer, arg);
         }
         else static assert(0, "don't know how to print type " ~ typeof(arg).stringof);
     }
@@ -65,6 +49,15 @@ template maxDecimalDigits(T)
     else static assert(0, "don't know max decimal digit count for " ~ T.stringof);
 }
 
+/**
+NOTE: this is a "normalization" function to prevent template bloat
+TODO: normalize everything to the primitive integer types, i.e.
+byte, ubyte
+short, ushort
+int, uint
+long, ulong
+etc.
+*/
 pragma(inline)
 void printDecimal(T, Printer)(Printer printer, T value) if (!is(T == Unqual!T))
 {
@@ -107,7 +100,6 @@ void printDecimal(T, Printer)(Printer printer, T value) if (is(T == Unqual!T))
         }
     }
 }
-
 
 immutable hexTableLower = "0123456789abcdef";
 immutable hexTableUpper = "0123456789ABCDEF";
@@ -266,7 +258,7 @@ struct BufferedFilePrinter(Policy)
 private struct FormatHex(T)
 {
     T value;
-    void toString(Printer)(Printer printer) const
+    void print(P)(P printer) const
     {
         static if (T.sizeof <= size_t.sizeof)
             printHex(printer, cast(size_t)value);
@@ -278,7 +270,54 @@ auto formatHex(T)(T value)
 {
     return FormatHex!T(value);
 }
+unittest
+{
+    char[50] buf;
+    sprint(buf, formatHex(10));
+    assert(buf[0 .. 1] == "a");
+}
 
+unittest
+{
+    import mar.array : aequals;
+
+    static struct Point
+    {
+        int x;
+        int y;
+        void print(P)(P printer) const
+        {
+            import mar.print;
+            printDecimal(printer, x);
+            printer.putc(',');
+            printDecimal(printer, y);
+        }
+        auto formatHex() const
+        {
+            static struct Print
+            {
+                const(Point)* p;
+                void print(P)(P printer) const
+                {
+                    import mar.print;
+                    printer.put("0x");
+                    printHex(printer, p.x);
+                    printer.putc(',');
+                    printer.put("0x");
+                    printHex(printer, p.y);
+                }
+            }
+            return Print(&this);
+        }
+    }
+
+    char[40] buf;
+    auto p = Point(10, 18);
+    assert(5 == sprint(buf, p));
+    assert(aequals("10,18", buf.ptr));
+    assert(8 == sprint(buf, p.formatHex));
+    assert(aequals("0xa,0x12", buf.ptr));
+}
 
 struct StringPrinter
 {
@@ -357,18 +396,18 @@ struct CalculateSizePrinter
     }
     +/
 }
+
 size_t getPrintSize(T...)(T args)
 {
     auto printer = CalculateSizePrinter(0);
-    argsToPrinter(&printer, args);
+    printArgs(&printer, args);
     return printer.size;
 }
-
 
 size_t sprint(T...)(char[] buffer, T args)
 {
     auto printer = StringPrinter(buffer, 0);
-    argsToPrinter(&printer, args);
+    printArgs(&printer, args);
     return printer.bufferedLength;
 }
 

@@ -8,7 +8,7 @@ import mar.array;
 import mar.mem;
 import mar.sentinel;
 import mar.c;
-import mar.format;
+import mar.print;
 import mar.file;
 import mar.linux.filesys;
 import mar.env;
@@ -19,8 +19,10 @@ import mar.linux.signals;
 immutable modules = [
     "mar/expect.d",
     "mar/arraybuilder.d",
+    "mar/print.d",
     "mar/input.d",
     "mar/c.d",
+    "mar/octal.d",
     "mar/mem_mmap.d",
     "mar/octal.d",
     "mar/sentinel.d",
@@ -37,7 +39,7 @@ __gshared cstring pathEnv;
 
 void loggy_mkdir(cstring dirname)
 {
-    print(stdout, "mkdir '", dirname, "'\n");
+    stdout.writeln("mkdir '", dirname);
     auto result = mkdir(dirname, S_IRWXU | S_IRWXG | S_IRWXO);
     if (result.failed)
     {
@@ -76,7 +78,7 @@ extern (C) int main(int argc, SentinelPtr!cstring argv, SentinelPtr!cstring envp
 
 void logError(T...)(T args)
 {
-    print(stderr, "Error: ", args, "\n");
+    stderr.writeln("Error: ", args);
 }
 
 pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
@@ -92,14 +94,14 @@ pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
         argv[0] = result;
     }
 
-    print(stdout, "[EXEC]");
+    stdout.write("[EXEC]");
     for(size_t i = 0; ;i++)
     {
         auto arg = argv[i];
         if (!arg) break;
-        print(stdout, " \"", arg, "\"");
+        stdout.write(" \"", arg, "\"");
     }
-    print(stdout, "\n");
+    stdout.writeln();
     auto pidResult = fork();
     if (pidResult.failed)
     {
@@ -161,9 +163,9 @@ auto fileToModuleName(const(char)[] file)
 
 void testModule(const(char)[] mod)
 {
-    print(stdout, "--------------------------------------------------------------------------------\n");
-    print(stdout, "Testint module: ", mod, "\n");
-    print(stdout, "--------------------------------------------------------------------------------\n");
+    stdout.writeln("--------------------------------------------------------------------------------");
+    stdout.writeln("Testint module: ", mod);
+    stdout.writeln("--------------------------------------------------------------------------------");
     auto basename = getBasename(mod);
     auto dirname = sprintMallocSentinel("out/", stripExt(basename));
     if (isDir(dirname.ptr))
@@ -182,7 +184,7 @@ void testModule(const(char)[] mod)
     //auto mainSourceName = sprintMallocSentinel(dirname, "/main.d");
     auto mainSourceName = sprintMallocSentinel("main.d");
 
-    print(stdout, "generating '", mainSourceName, "'\n");
+    stdout.writeln("generating '", mainSourceName, "'");
     {
         auto mainSource = open(mainSourceName.ptr, OpenFlags(OpenAccess.writeOnly, OpenCreateFlags.creat),
             (S_IRUSR | S_IWUSR) | (S_IRGRP | S_IWGRP) | (S_IROTH));
@@ -193,17 +195,17 @@ void testModule(const(char)[] mod)
         }
         scope (exit) close(mainSource);
 
-        print(mainSource, "import mar.file;\n");
-        print(mainSource, "\n");
+        mainSource.writeln("import mar.file;");
+        mainSource.writeln();
         auto modName = fileToModuleName(mod);
-        print(mainSource, "// import module we are testing\n");
-        print(mainSource, "import modUnderTest = ", modName, ";\n");
-        print(mainSource, q{
+        mainSource.writeln("// import module we are testing");
+        mainSource.writeln("import modUnderTest = ", modName, ";");
+        mainSource.write(q{
 import mar.start;
 mixin(startMixin);
 extern (C) int main(uint argc, void* argv, void* envp)
 {
-    print(stdout, "Running ", __traits(getUnitTests, modUnderTest).length, " Tests...\n");
+    stdout.writeln("Running ", __traits(getUnitTests, modUnderTest).length, " Tests...");
     foreach (test; __traits(getUnitTests, modUnderTest))
     {
         test();
@@ -233,7 +235,7 @@ extern (C) int main(uint argc, void* argv, void* envp)
        compileArgs[offset++] = cstring.nullValue;
        waitEnforceSuccess(run(compileArgs.ptr.assumeSentinel, envp));
     }
-    print(stdout, "rm '", mainSourceName, "'\n");
+    stdout.writeln("rm '", mainSourceName, "'");
     {
         auto result = unlink(mainSourceName.ptr);
         if (result.failed)

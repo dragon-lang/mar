@@ -21,6 +21,6 @@ mixin(startMixin);
 
 extern (C) int main(uint argc, SentinelPtr!cstring argv, SentinelPtr!cstring envp)
 {
-    print(stdout, "Hello World!\n");
+    stdout.write("Hello World!\n");
     return 0;
 }

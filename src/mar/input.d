@@ -255,10 +255,10 @@ unittest
     ];
     foreach (testCase; testCases)
     {
-        //import mar.file; print(stdout, "TestCase '''\n", testCase.input, "\n'''\n");
+        //import mar.file; stdout.write("TestCase '''\n", testCase.input, "\n'''\n");
         foreach (readSize; 1 .. testCase.input.length + 1)
         {
-            //import mar.file; print(stdout, "  readSize ", readSize, "\n");
+            //import mar.file; stdout.write("  readSize ", readSize, "\n");
             auto reader = LineReader!TestHooks(testCase.input, readSize);
             foreach (line; testCase.lines)
             {

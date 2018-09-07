@@ -144,11 +144,11 @@ struct LinuxDirentRange
     auto front() { return next; }
     void popFront()
     {
-        import mar.file : print, stderr;
+        import mar.file : stderr;
         import mar.process : exit;
         if (next[0].d_reclen > size)
         {
-            print(stderr, "Error: invalid linux_dirent, size is ", size, " but d_reclen is ",
+            stderr.write("Error: invalid linux_dirent, size is ", size, " but d_reclen is ",
                 next[0].d_reclen, "\n");
             exit(1);
         }

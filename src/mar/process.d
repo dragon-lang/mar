@@ -136,7 +136,7 @@ struct ProcBuilder
         }
     }
 
-    void toString(Printer)(Printer printer) const
+    void print(P)(P printer) const
     {
         version (Windows)
             static assert(0, "not impl");
@@ -155,20 +155,21 @@ struct ProcBuilder
 
 unittest
 {
-    import mar.sentinel : lit, litPtr;
+    import mar.sentinel;
+    import mar.c : cstring;
     {
         auto proc = ProcBuilder.forExeFile(lit!"/bin/ls");
-        auto startResult = proc.startWithClean();
+        auto startResult = proc.startWithClean(SentinelPtr!cstring.nullValue);
         if (startResult.failed)
         {
-            import mar.file; print(stdout, "proc start failed: %s", startResult);
+            import mar.file; stdout.write("proc start failed: %s", startResult);
         }
         else
         {
             import mar.linux.process : wait;
-            import mar.file; print(stdout, "started ls!\n");
+            import mar.file; stdout.write("started ls!\n");
             auto waitResult = wait(startResult.val);
-            print(stdout, "waitResult is ", waitResult, "\n");
+            stdout.write("waitResult is ", waitResult, "\n");
             assert(!waitResult.failed);
         }
     }

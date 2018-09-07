@@ -33,8 +33,3 @@ This will cause the compiler to compile any modules from mar alongside your own 
 cd test
 ./go.d
 ```
-
-# TODO
-
-* probably rename mar.format to mar.print
-* probably use method `print` instead of `toString`
