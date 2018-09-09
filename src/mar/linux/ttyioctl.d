@@ -314,6 +314,10 @@ auto tcgetattr(FileD fd, termios* arg)
 {
     return ioctl(fd, TCGETS, arg);
 }
+auto tcsetattrnow(FileD fd, termios* arg)
+{
+    return ioctl(fd, TCSETS, arg);
+}
 
 bool isatty(FileD fd)
 {

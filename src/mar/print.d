@@ -12,26 +12,18 @@ auto printArgs(Printer, T...)(Printer printer, T args)
         //static if (is(typeof(arg.print(printer))))
         //static if (__traits(compiles, arg.print(printer)))
         static if (__traits(hasMember, arg, "print"))
-        {
             arg.print(printer);
-        }
         else static if (isStringLike!(typeof(arg)))
-        {
             printer.put(cast(const(char)[])arg);
-        }
         else static if (is(typeof(arg) == char))
-        {
             printer.putc(arg);
-        }
+        else static if (is(typeof(arg) == bool))
+            printer.put(arg ? "true" : "false");
         else static if (is(typeof(arg) == void*))
-        {
             printHex(printer, cast(size_t)arg);
-        }
         //else static if (isArithmetic!(typeof(arg)))
         else static if (__traits(compiles, printDecimal(printer, arg)))
-        {
             printDecimal(printer, arg);
-        }
         else static assert(0, "don't know how to print type " ~ typeof(arg).stringof);
     }
 }

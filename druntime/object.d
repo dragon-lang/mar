@@ -29,6 +29,7 @@ version (CRuntime_Glibc)
         exit(1);
     }
 }
+else static assert(0, "__assert not implemented on this platform");
 
 version (D_BetterC) { } else {
 

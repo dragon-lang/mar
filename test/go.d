@@ -4,6 +4,7 @@
 //!version NoStdc
 //!noConfigFile
 //!betterC
+import mar.enforce;
 import mar.array;
 import mar.mem;
 import mar.sentinel;
@@ -17,6 +18,7 @@ import mar.linux.process;
 import mar.linux.signals;
 
 immutable modules = [
+    "mar/enforce.d",
     "mar/expect.d",
     "mar/arraybuilder.d",
     "mar/print.d",
@@ -33,19 +35,14 @@ immutable modules = [
 import mar.start;
 mixin(startMixin);
 
-
 __gshared SentinelPtr!cstring envp;
 __gshared cstring pathEnv;
 
 void loggy_mkdir(cstring dirname)
 {
     stdout.writeln("mkdir '", dirname);
-    auto result = mkdir(dirname, S_IRWXU | S_IRWXG | S_IRWXO);
-    if (result.failed)
-    {
-        logError("mkdir '", dirname, "' failed, returned ", result.numval);
-        exit(1);
-    }
+    mkdir(dirname, S_IRWXU | S_IRWXG | S_IRWXO)
+        .enforce("mkdir '", dirname, "' failed, returned ", Result.val);
 }
 
 extern (C) int main(int argc, SentinelPtr!cstring argv, SentinelPtr!cstring envp)
@@ -86,11 +83,7 @@ pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
     if (usePath(argv[0]))
     {
         auto result = findProgram(pathEnv, argv[0].walkToArray.array);
-        if (result.isNull)
-        {
-            logError("cannot find program '", argv[0], "'");
-            exit(1);
-        }
+        enforce(!result.isNull, "cannot find program '", argv[0], "'");
         argv[0] = result;
     }
 
@@ -103,40 +96,32 @@ pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
     }
     stdout.writeln();
     auto pidResult = fork();
-    if (pidResult.failed)
-    {
-        logError("fork failed, returned ", pidResult.numval);
-        exit(1);
-    }
     if (pidResult.val == 0)
     {
         auto result = execve(argv[0], argv, envp);
         logError("execve returned ", result.numval);
         exit(1);
     }
+    enforce(pidResult, "fork failed, returned ", pidResult.numval);
     return pidResult.val;
 }
 
 auto wait(pid_t pid)
 {
     siginfo_t info;
-    auto result = waitid(idtype_t.pid, pid, &info, WEXITED, null);
-    if (result.failed)
-    {
-        logError("waitid failed, returned ", result.numval);
-        //exit(result);
-        exit(1);
-    }
+
+    waitid(idtype_t.pid, pid, &info, WEXITED, null)
+        .enforce("waitid failed, returned ", Result.val);
     return info.si_status;
 }
 
 void waitEnforceSuccess(pid_t pid)
 {
-    auto result = wait(pid);
-    if (result != 0)
+    auto exitCode = wait(pid);
+    if (exitCode != 0)
     {
-        logError("last program failed (exit code is ", result, ")");
-        exit(1);
+        logError("last program failed (exit code is ", exitCode, ")");
+        exit(exitCode);
     }
 }
 
@@ -188,11 +173,7 @@ void testModule(const(char)[] mod)
     {
         auto mainSource = open(mainSourceName.ptr, OpenFlags(OpenAccess.writeOnly, OpenCreateFlags.creat),
             (S_IRUSR | S_IWUSR) | (S_IRGRP | S_IWGRP) | (S_IROTH));
-        if (!mainSource.isValid)
-        {
-            logError("open '", mainSourceName, "' failed, returned ", mainSource.numval);
-            exit(1);
-        }
+        enforce(mainSource.isValid, "open '", mainSourceName, "' failed, returned ", mainSource.numval);
         scope (exit) close(mainSource);
 
         mainSource.writeln("import mar.file;");
@@ -236,14 +217,8 @@ extern (C) int main(uint argc, void* argv, void* envp)
        waitEnforceSuccess(run(compileArgs.ptr.assumeSentinel, envp));
     }
     stdout.writeln("rm '", mainSourceName, "'");
-    {
-        auto result = unlink(mainSourceName.ptr);
-        if (result.failed)
-        {
-            logError("unlink '", mainSourceName, "' failed, returned ", result.numval);
-            exit(1);
-        }
-    }
+    unlink(mainSourceName.ptr)
+        .enforce("unlink '", mainSourceName, "' failed, returned ", Result.val);
 
     auto exeName = sprintMallocSentinel(dirname, "/runtests");
     {

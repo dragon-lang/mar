@@ -183,6 +183,11 @@ struct SyscallValueResult(T)
 
     pragma(inline) void set(const T value) { this._value = cast(ptrdiff_t)value; }
     pragma(inline) T val() const { return cast(T)_value; }
+    void print(P)(P printer) const
+    {
+        import mar.print : printDecimal;
+        printDecimal(printer, _value);
+    }
 }
 
 struct SyscallExpectZero
@@ -191,6 +196,11 @@ struct SyscallExpectZero
     pragma(inline) ptrdiff_t numval() const { return _value; }
     pragma(inline) bool failed() const { return _value != 0; }
     pragma(inline) auto passed() const { return _value == 0; }
+    void print(P)(P printer) const
+    {
+        import mar.print : printDecimal;
+        printDecimal(printer, _value);
+    }
 }
 
 auto getSysName(inout(char)[] s)
