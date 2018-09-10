@@ -15,6 +15,13 @@ alias string = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
+version (NoExit)
+{
+    // do not define any assert functions in this case
+}
+else
+{
+
 // The D compiler reduces assert statements to different code that calls one of these variants
 // depending on the CRuntime version.  Note that this doesn't mean that we are actually using
 // the cruntime.
@@ -24,12 +31,14 @@ version (CRuntime_Glibc)
     {
         import mar.process : exit;
         import mar.sentinel : assumeSentinel;
-        import mar.linux.file : stderr;
+        import mar.io : stderr;
         stderr.write(file.assumeSentinel, "(", line, ") assert failed: ", errorMessage.assumeSentinel, "\n");
         exit(1);
     }
 }
 else static assert(0, "__assert not implemented on this platform");
+
+}
 
 version (D_BetterC) { } else {
 

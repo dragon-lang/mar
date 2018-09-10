@@ -136,6 +136,9 @@ align(1):
 }
 */
 
+// TODO: make one that supports NoExit
+version (NoExit) { } else
+{
 struct LinuxDirentRange
 {
     size_t size;
@@ -144,19 +147,19 @@ struct LinuxDirentRange
     auto front() { return next; }
     void popFront()
     {
-        import mar.file : stderr;
+        import mar.io : stderr;
         import mar.process : exit;
         if (next[0].d_reclen > size)
         {
-            stderr.write("Error: invalid linux_dirent, size is ", size, " but d_reclen is ",
-                next[0].d_reclen, "\n");
+            stderr.writeln("Error: invalid linux_dirent, size is ", size, " but d_reclen is ",
+                next[0].d_reclen);
             exit(1);
         }
         size -= next[0].d_reclen;
         next = cast(linux_dirent*)((cast(ubyte*)next) + next[0].d_reclen);
     }
 }
-
+}
 
 
 // These are the fs-independent mount-flags: up to 32 flags are supported

@@ -17,7 +17,7 @@ struct passfail
     pragma(inline) @property bool asBool() { return _passed; }
     alias asBool this;
     */
-    void print(P)(P printer) { printer.put(_passed ? "pass" : "fail"); }
+    auto print(P)(P printer) { return printer.put(_passed ? "pass" : "fail"); }
 
     @property auto passed() const pure nothrow @nogc { return _passed; }
     @property auto failed() const pure nothrow @nogc { return !_passed; }

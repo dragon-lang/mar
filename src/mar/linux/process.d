@@ -5,7 +5,10 @@ import mar.sentinel : SentinelPtr;
 import mar.c : cstring;
 import mar.linux.syscall;
 
-alias exit = sys_exit;
+version (NoExit) { } else
+{
+    alias exit = sys_exit;
+}
 alias getpid = sys_getpid;
 alias fork = sys_fork;
 alias vfork = sys_vfork;

@@ -4,12 +4,14 @@ Mar has its own API to support data conversion to text.
 
 ### Printer
 
-An object that accepts text and/or text operations to print.  It must have the following methods:
+A _Printer_ is an object that accepts text and/or text operations to print.  It must have the following methods:
 
 ```D
-void flush();
-void put(const(char)[] str);
-void putc(const char c);
+alias PutResult = <return type for most functions, should have the "failed" member>;
+static PutResult success();
+PutResult flush();
+PutResult put(const(char)[] str);
+PutResult putc(const char c);
 
 auto getTempBuffer(size_t size)();
 auto tryGetTempBufferImpl(size_t size);
@@ -25,12 +27,9 @@ struct Point
 {
     int x;
     int y;
-    void print(P)(P printer) const
+    auto print(P)(P printer) const
     {
-        import mar.print : printDecimal;
-        printDecimal(printer, x);
-        printer.putc(',');
-        printDecimal(printer, y);
+        return printArgs(printer, x, ',', y);
     }
 }
 ```
@@ -60,26 +59,19 @@ static struct Point
 {
     int x;
     int y;
-    void print(P)(P printer) const
+    auto print(P)(P printer) const
     {
-        import mar.print;
-        printDecimal(printer, x);
-        printer.putc(',');
-        printDecimal(printer, y);
+        return printArgs(printer, x, ',', y);
     }
     auto formatHex() const
     {
         static struct Print
         {
             const(Point)* p;
-            void print(P)(P printer) const
+            auto print(P)(P printer) const
             {
-                import mar.print;
-                printer.put("0x");
-                printHex(printer, p.x);
-                printer.putc(',');
-                printer.put("0x");
-                printHex(printer, p.y);
+                return printArgs(printer, "0x",
+                    mar.print.formatHex(p.x), ",0x", .mar.print.formatHex(p.y));
             }
         }
         return Print(&this);

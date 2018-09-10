@@ -33,3 +33,13 @@ This will cause the compiler to compile any modules from mar alongside your own 
 cd test
 ./go.d
 ```
+
+# Versions
+
+#### `-version=NoStdc`
+
+Do not use the standard C library
+
+#### `-version=NoExit`
+
+Do not allow calls to `exit`. Reduces the number of ways the program can quit. Useful if program needs to clean up before exiting.

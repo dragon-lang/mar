@@ -11,6 +11,7 @@ import mar.sentinel;
 import mar.c;
 import mar.print;
 import mar.file;
+import mar.io;
 import mar.linux.filesys;
 import mar.env;
 import mar.findprog;
@@ -22,6 +23,7 @@ immutable modules = [
     "mar/expect.d",
     "mar/arraybuilder.d",
     "mar/print.d",
+    "mar/ascii.d",
     "mar/input.d",
     "mar/c.d",
     "mar/octal.d",
@@ -176,7 +178,7 @@ void testModule(const(char)[] mod)
         enforce(mainSource.isValid, "open '", mainSourceName, "' failed, returned ", mainSource.numval);
         scope (exit) close(mainSource);
 
-        mainSource.writeln("import mar.file;");
+        mainSource.writeln("import mar.io;");
         mainSource.writeln();
         auto modName = fileToModuleName(mod);
         mainSource.writeln("// import module we are testing");
@@ -194,7 +196,6 @@ extern (C) int main(uint argc, void* argv, void* envp)
     return 0;
 }
 });
-
     }
 
     {

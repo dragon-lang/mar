@@ -77,26 +77,40 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
     bool failed() const { return state != State.success; }
     pragma(inline)
     bool passed() const { return state == State.success; }
-    void enforce() const
+
+    bool reportFail() const
     {
         if (failed)
         {
-            import mar.process : exit;
-            import mar.file : stderr;
-            stderr.write("Error: ", this, "\n");
-            exit(1);
+            import mar.io : stderr;
+            stderr.writeln("Error: ", this);
+            return true;
+        }
+        return false;
+    }
+    version (NoExit) { } else
+    {
+        void enforce() const
+        {
+            if (failed)
+            {
+                import mar.process : exit;
+                import mar.io : stderr;
+                stderr.writeln("Error: ", this);
+                exit(1);
+            }
         }
     }
 };
-        code ~= "    void print(P)(P printer) const\n";
+        code ~= "    auto print(P)(P printer) const\n";
         code ~= "    {\n";
         code ~= "        final switch (state)\n";
         code ~= "        {\n";
-        code ~= "        case State.success: printer.put(\"no error\"); break;\n";
+        code ~= "        case State.success: return printer.put(\"no error\"); break;\n";
         static foreach (i, errorCase; ErrorCases)
         {
             // TODO: interpolate error message and data
-            code ~= "        case State." ~ errorCase.name ~ ": printer.put(\"" ~
+            code ~= "        case State." ~ errorCase.name ~ ": return printer.put(\"" ~
                 errorCase.errorMessageFormat ~ "\"); break;\n";
         }
         code ~= "        }\n";

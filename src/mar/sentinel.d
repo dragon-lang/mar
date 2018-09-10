@@ -139,9 +139,9 @@ private template SentinelTemplate(T, immutable T sentinelValue)
                 pragma(inline)
                 auto asCString() const { return cast(typeof(this))this; }
             }
-            void print(P)(P printer) const
+            auto print(P)(P printer) const
             {
-                printer.put(_ptr[0 .. walkLength()]);
+                return printer.put(_ptr[0 .. walkLength()]);
             }
         }
         bool contains(U)(U value)

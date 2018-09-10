@@ -9,18 +9,21 @@ version (linux)
     alias wait = mar.linux.process.wait;
 }
 
-void exit(ptrdiff_t exitCode)
+version (NoExit) {} else
 {
-    version (linux)
+    void exit(ptrdiff_t exitCode)
     {
-        import mar.linux.process : exit;
-        exit(exitCode);
+        version (linux)
+        {
+            import mar.linux.process : exit;
+            exit(exitCode);
+        }
+        else version (Windows)
+        {
+            assert(0, "exit not implemented on windows");
+        }
+        else static assert(0, "unsupported platform");
     }
-    else version (Windows)
-    {
-        assert(0, "exit not implemented on windows");
-    }
-    else static assert(0, "unsupported platform");
 }
 
 /**
@@ -99,6 +102,10 @@ struct ProcBuilder
         ErrorCase!("outOfMemory", "out of memory"),
         ErrorCase!("forkFailed", "fork failed, returned %", ptrdiff_t));
 
+    // TODO: support NoExit case
+    version (NoExit) { } else
+    {
+
     /** Start the process and clean the data structures created to start the process */
     StartResult startWithClean(SentinelPtr!cstring envp)
     {
@@ -135,20 +142,34 @@ struct ProcBuilder
             return StartResult.success(pidResult.val);
         }
     }
+    }
 
-    void print(P)(P printer) const
+    auto print(P)(P printer) const
     {
         version (Windows)
             static assert(0, "not impl");
         else version (Posix)
         {
             // TODO: how to handle args with spaces?
-            printer.put(args.data[0].walkToArray.array);
+            {
+                auto result = printer.put(args.data[0].walkToArray.array);
+                if (result.failed)
+                    return result;
+            }
             foreach (arg; args.data[1 .. $])
             {
-                printer.putc(' ');
-                printer.put(arg.walkToArray.array);
+                {
+                    auto result = printer.putc(' ');
+                    if (result.failed)
+                        return result;
+                }
+                {
+                    auto result = printer.put(arg.walkToArray.array);
+                    if (result.failed)
+                        return result;
+                }
             }
+            return P.success;
         }
     }
 }
@@ -162,12 +183,12 @@ unittest
         auto startResult = proc.startWithClean(SentinelPtr!cstring.nullValue);
         if (startResult.failed)
         {
-            import mar.file; stdout.write("proc start failed: %s", startResult);
+            import mar.io; stdout.write("proc start failed: %s", startResult);
         }
         else
         {
             import mar.linux.process : wait;
-            import mar.file; stdout.write("started ls!\n");
+            import mar.io; stdout.write("started ls!\n");
             auto waitResult = wait(startResult.val);
             stdout.write("waitResult is ", waitResult, "\n");
             assert(!waitResult.failed);
@@ -177,5 +198,6 @@ unittest
         auto proc = ProcBuilder.forExeFile(lit!"a");
         assert(proc.tryPut(lit!"b").passed);
         assert(proc.tryPut(litPtr!"b").passed);
+        import mar.io; stdout.writeln(proc);
     }
 }

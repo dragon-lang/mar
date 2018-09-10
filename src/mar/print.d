@@ -3,29 +3,53 @@ module mar.print;
 import mar.traits : isArithmetic, Unqual;
 import mar.sentinel : SentinelArray;
 
-auto printArgs(Printer, T...)(Printer printer, T args)
+/**
+Takes a single argument and prints it to the given `printer`.
+The function will try each of the following in order to print the argument
+
+1. if `arg` has a `print` method, it will call that
+2. if `isStringLike!(typeof(arg))`, it will forward it to `printer.put`
+3. If `typeof(arg) == char`, it will forward it to `printer.putc`
+4. if `typeof(arg) == bool`, it will call `printer.put(arg ? "true" : "false")`
+5. if `typeof(arg) == void*`, it will call `printHex(printer, arg)`
+6. is `isArithmetic!(typeof(arg))`, it will call `printDecimal(printer, arg)`
+
+*/
+pragma(inline)
+auto printArg(Printer, T)(Printer printer, T arg)
 {
     import mar.string : isStringLike;
 
+    //static if (is(typeof(arg.print(printer))))
+    //static if (__traits(compiles, arg.print(printer)))
+    static if (__traits(hasMember, arg, "print"))
+        return arg.print(printer);
+    else static if (isStringLike!(typeof(arg)))
+        return printer.put(cast(const(char)[])arg);
+    else static if (is(typeof(arg) == char))
+        return printer.putc(arg);
+    else static if (is(typeof(arg) == bool))
+        return printer.put(arg ? "true" : "false");
+    else static if (is(typeof(arg) == void*))
+        return printHex(printer, cast(size_t)arg);
+    else static if (isArithmetic!(typeof(arg)))
+    //else static if (__traits(compiles, printDecimal(printer, arg)))
+        return printDecimal(printer, arg);
+    else static assert(0, "don't know how to print type " ~ typeof(arg).stringof);
+}
+
+/**
+Call `printArg` on each argument, but stop printing if one of them fails.
+*/
+auto printArgs(Printer, T...)(Printer printer, T args)
+{
     foreach (arg; args)
     {
-        //static if (is(typeof(arg.print(printer))))
-        //static if (__traits(compiles, arg.print(printer)))
-        static if (__traits(hasMember, arg, "print"))
-            arg.print(printer);
-        else static if (isStringLike!(typeof(arg)))
-            printer.put(cast(const(char)[])arg);
-        else static if (is(typeof(arg) == char))
-            printer.putc(arg);
-        else static if (is(typeof(arg) == bool))
-            printer.put(arg ? "true" : "false");
-        else static if (is(typeof(arg) == void*))
-            printHex(printer, cast(size_t)arg);
-        //else static if (isArithmetic!(typeof(arg)))
-        else static if (__traits(compiles, printDecimal(printer, arg)))
-            printDecimal(printer, arg);
-        else static assert(0, "don't know how to print type " ~ typeof(arg).stringof);
+        auto result = printArg(printer, arg);
+        if (result.failed)
+            return result;
     }
+    return Printer.success;
 }
 
 template maxDecimalDigits(T)
@@ -43,64 +67,97 @@ template maxDecimalDigits(T)
 
 /**
 NOTE: this is a "normalization" function to prevent template bloat
-TODO: normalize everything to the primitive integer types, i.e.
-byte, ubyte
-short, ushort
-int, uint
-long, ulong
-etc.
 */
 pragma(inline)
-void printDecimal(T, Printer)(Printer printer, T value) if (!is(T == Unqual!T))
+auto printDecimal(T, Printer)(Printer printer, T value)
 {
-    printDecimal!(Unqual!T)(printer, value);
-}
-void printDecimal(T, Printer)(Printer printer, T value) if (is(T == Unqual!T))
-{
-    import mar.array : areverse;
-
     auto buffer = printer.getTempBuffer!(
         1 + // 1 for the '-' character
         maxDecimalDigits!T);
     scope (exit) printer.commitBuffer(buffer.commitValue);
 
-    if (value == 0)
+    // TODO: support types larget than size_t
+    static if (T.sizeof > size_t.sizeof)
     {
-        buffer.ptr[0] = '0';
-        buffer.ptr++;
-        return;
+        static assert(0, "printing numbers with this bit width is not implemented");
     }
-    static if (T.min < 0)
+
+    static if (T.min >= 0)
+    {
+        buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)value);
+    }
+    else
     {
         if (value < 0)
         {
             buffer.ptr[0] = '-';
             buffer.ptr++;
-            value *= -1; // NOTE: this won't always work
+            buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)(-cast(ptrdiff_t)value));
+        }
+        else
+        {
+            buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)value);
         }
     }
-    auto saveDigitStart = buffer.ptr;
+    return Printer.success;
+}
+
+unittest
+{
+    import mar.array : aequals;
+    char[50] buffer;
+    char[] str(T)(T num)
+    {
+        auto result = buffer[0 .. sprint(buffer, num)];
+        import mar.io; stdout.writeln("TestNumber: ", result);
+        return result;
+    }
+
+    assert(aequals(str(short.min), "-32768"));
+    assert(aequals(str(short.max), "32767"));
+    assert(aequals(str(ushort.min), "0"));
+    assert(aequals(str(ushort.max), "65535"));
+    assert(aequals(str(int.min), "-2147483648"));
+    assert(aequals(str(int.max), "2147483647"));
+    assert(aequals(str(uint.min), "0"));
+    assert(aequals(str(uint.max), "4294967295"));
+
+    // TODO: remove this static if when all integer sizes are implemented
+    static if (long.sizeof <= size_t.sizeof)
+    {
+        assert(aequals(str(long.min), "-9223372036854775808"));
+        assert(aequals(str(long.max), "9223372036854775807"));
+        assert(aequals(str(ulong.min), "0"));
+        assert(aequals(str(ulong.max), "18446744073709551615"));
+    }
+}
+
+char* printSizetDecimal(char* buffer, size_t value)
+{
+    import mar.array : areverse;
+
+    if (value == 0)
+    {
+        buffer[0] = '0';
+        return buffer + 1;
+    }
+    auto start = buffer;
     for (;;)
     {
-        buffer.ptr[0] = (value % 10) + '0';
-        buffer.ptr++;
+        buffer[0] = (value % 10) + '0';
+        buffer++;
         value /= 10;
         if (value == 0)
         {
-            areverse(saveDigitStart, buffer.ptr);
-            return;
+            areverse(start, buffer);
+            return buffer;
         }
     }
 }
 
 immutable hexTableLower = "0123456789abcdef";
 immutable hexTableUpper = "0123456789ABCDEF";
-pragma(inline)
-void printHex(T, Printer)(Printer printer, T value) if (!is(T == Unqual!T))
-{
-    printHex!(Unqual!T)(printer, value);
-}
-void printHex(T, Printer)(Printer printer, T value) if (is(T == Unqual!T))
+auto printHex(T, Printer)(Printer printer, T value)
 {
     import mar.array : areverse;
 
@@ -110,39 +167,90 @@ void printHex(T, Printer)(Printer printer, T value) if (is(T == Unqual!T))
         );
     scope (exit) printer.commitBuffer(buffer.commitValue);
 
-    auto saveDigitStart = buffer.ptr;
+    static if (T.sizeof > size_t.sizeof)
+    {
+        static assert(0, "printing hex numbers larger than size_t not implemented");
+    }
+
+    static if (T.min < 0)
+        static assert(0, "printing signed hex values not implemented");
+    else
+    {
+        buffer.ptr = printSizetHex(buffer.ptr, cast(size_t)value);
+    }
+    return Printer.success;
+}
+char* printSizetHex(char* buffer, size_t value)
+{
+    import mar.array : areverse;
+
+    auto start = buffer;
     for (;;)
     {
-        buffer.ptr[0] = hexTableLower[value & 0b1111];
-        buffer.ptr++;
+        buffer[0] = hexTableLower[value & 0b1111];
+        buffer++;
         value >>= 4;
         if (value == 0)
         {
-            areverse(saveDigitStart, buffer.ptr);
-            return;
+            areverse(start, buffer);
+            return buffer;
         }
     }
+}
+
+// TODO: maybe put this somewhere else
+//       a printer could return this type if will not return errors.
+//       an example of this would be a printer that exits on failure instead
+//       of returning the error
+struct CannotFail
+{
+    pragma(inline) static bool failed() { return false; }
 }
 
 // Every printer should be able to return a buffer
 // large enough to hold at least some characters for
 // things like printing numbers and such
-//enum MinPrinterBufferLength = 100;
+//enum MinPrinterBufferLength = 30; ??
 
-
-struct DefaultBufferedFilePrinterPolicy
+struct BufferedFileReturnErrorPrinterPolicy
 {
+    import mar.file : FileD;
+    import mar.expect;
+
     enum bufferLength = 50;
 
-    // TODO: make this a template
-    //static void throwError(T...)(T msg)
-    static void throwError(const(char)[] msg)
+    mixin ExpectMixin!("PutResult", void,
+        ErrorCase!("writeFailed", "write failed, returned %", ptrdiff_t));
+    pragma(inline)
+    static PutResult success() { return PutResult.success; }
+    static PutResult writeFailed(FileD dest, size_t writeSize, ptrdiff_t errno)
     {
-        import mar.file : stderr, write;
-        import mar.process : exit;
+        // TODO: do something with dest/writeSize
+        return PutResult.writeFailed(errno);
+    }
+}
+version (NoExit)
+    alias DefaultBufferedFilePrinterPolicy = BufferedFileReturnErrorPrinterPolicy;
+else
+{
+    alias DefaultBufferedFilePrinterPolicy = BufferedFileExitPrinterPolicy;
+    struct BufferedFileExitPrinterPolicy
+    {
+        import mar.file : FileD;
 
-        write(stderr, msg);
-        exit(1);
+        enum bufferLength = 50;
+
+        alias PutResult = CannotFail;
+        static CannotFail success() { return CannotFail(); }
+        static CannotFail writeFailed(FileD dest, size_t writeSize, ptrdiff_t returnValue)
+        {
+            import mar.io : stderr;
+            import mar.file : write;
+            import mar.process : exit;
+            write(stderr, "Error: write failed! (TODO: print error writeSize and returnValue)");
+            exit(1);
+            assert(0);
+        }
     }
 }
 
@@ -156,13 +264,14 @@ struct DefaultPrinterBuffer
     pragma(inline) void putc(char c) { ptr[0] = c; ptr++; }
 }
 
-
 struct BufferedFilePrinter(Policy)
 {
     import mar.array : acopy;
     import mar.file : FileD, write;
 
-    static assert(__traits(hasMember, Policy, "throwError"));
+    static assert(__traits(hasMember, Policy, "PutResult"));
+    static assert(__traits(hasMember, Policy, "success"));
+    static assert(__traits(hasMember, Policy, "writeFailed"));
     static assert(__traits(hasMember, Policy, "bufferLength"));
 
     private FileD fd;
@@ -172,30 +281,33 @@ struct BufferedFilePrinter(Policy)
     //
     // The Printer Interface
     //
-    void flush()
+    alias PutResult = Policy.PutResult;
+    static PutResult success() { return Policy.success; }
+    PutResult flush()
     {
         if (bufferedLength > 0)
         {
             auto result = write(fd, buffer[0 .. bufferedLength]);
             if (result.val != bufferedLength)
-            {
-                //Policy.throwError("write ", len, " bytes to ", fd, " failed, returned ", result);
-                Policy.throwError("write failed");
-            }
+                return Policy.writeFailed(fd, bufferedLength, result.numval);
             bufferedLength = 0;
         }
+        return success;
     }
-    void put(const(char)[] str)
+    PutResult put(const(char)[] str)
     {
         auto left = Policy.bufferLength - bufferedLength;
         if (left < str.length)
         {
-            flush();
-            auto result = write(fd, str);
-            if (result.val != str.length)
             {
-                //Policy.throwError("write ", str.length, " bytes to ", fd, " failed, returned ", result);
-                Policy.throwError("write failed");
+                auto result = flush();
+                if (result.failed)
+                    return result;
+            }
+            {
+                auto result = write(fd, str);
+                if (result.val != str.length)
+                    return Policy.writeFailed(fd, str.length, result.numval);
             }
         }
         else
@@ -203,12 +315,18 @@ struct BufferedFilePrinter(Policy)
             acopy(buffer + bufferedLength, str);
             bufferedLength += str.length;
         }
+        return success;
     }
-    void putc(const char c)
+    PutResult putc(const char c)
     {
         if (bufferedLength == Policy.bufferLength)
-            flush();
+        {
+            auto result = flush();
+            if (result.failed)
+                return result;
+        }
         buffer[bufferedLength++] = c;
+        return success;
     }
 
     /**
@@ -250,12 +368,12 @@ struct BufferedFilePrinter(Policy)
 private struct FormatHex(T)
 {
     T value;
-    void print(P)(P printer) const
+    auto print(P)(P printer) const
     {
         static if (T.sizeof <= size_t.sizeof)
-            printHex(printer, cast(size_t)value);
+            return printHex(printer, cast(size_t)value);
         else
-            printHex(printer, cast(ulong)value);
+            return printHex(printer, cast(ulong)value);
     }
 }
 auto formatHex(T)(T value)
@@ -277,26 +395,33 @@ unittest
     {
         int x;
         int y;
-        void print(P)(P printer) const
+        auto print(P)(P printer) const
         {
+            return printArgs(printer, x, ',', y);
+            /*
             import mar.print;
-            printDecimal(printer, x);
-            printer.putc(',');
-            printDecimal(printer, y);
+            {
+                auto result = printDecimal(printer, x);
+                if (result.failed)
+                    return result;
+            }
+            {
+                auto result = printer.putc(',');
+                if (result.failed)
+                    return result;
+            }
+            return printDecimal(printer, y);
+            */
         }
         auto formatHex() const
         {
             static struct Print
             {
                 const(Point)* p;
-                void print(P)(P printer) const
+                auto print(P)(P printer) const
                 {
-                    import mar.print;
-                    printer.put("0x");
-                    printHex(printer, p.x);
-                    printer.putc(',');
-                    printer.put("0x");
-                    printHex(printer, p.y);
+                    return printArgs(printer, "0x",
+                        mar.print.formatHex(p.x), ",0x", mar.print.formatHex(p.y));
                 }
             }
             return Print(&this);
@@ -327,18 +452,22 @@ struct StringPrinter
     //
     // The Printer Interface
     //
+    alias PutResult = CannotFail;
+    static PutResult success() { return CannotFail(); }
     pragma(inline)
-    void flush() { }
-    void put(const(char)[] str)
+    PutResult flush() { return success; }
+    PutResult put(const(char)[] str)
     {
         enforceCapacity(str.length);
         acopy(buffer.ptr + bufferedLength, str);
         bufferedLength += str.length;
+        return success;
     }
-    void putc(const char c)
+    PutResult putc(const char c)
     {
         enforceCapacity(1);
         buffer[bufferedLength++] = c;
+        return success;
     }
 
     pragma(inline)
@@ -365,10 +494,12 @@ struct CalculateSizePrinter
     //
     // The Printer Interface
     //
+    alias PutResult = CannotFail;
+    static PutResult success() { return CannotFail(); }
     pragma(inline)
-    void flush() { }
-    void put(const(char)[] str) { size += str.length; }
-    void putc(const char c) { size++; }
+    PutResult flush() { return CannotFail(); }
+    PutResult put(const(char)[] str) { size += str.length; return CannotFail(); }
+    PutResult putc(const char c) { size++; return CannotFail(); }
     /+
     pragma(inline)
     auto getTempBuffer(size_t size)()

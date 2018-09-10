@@ -9,7 +9,7 @@ On errors, prints a message to stderr and exits.
 */
 auto getOptArg(T)(T args, uint* i)
 {
-    import mar.file : stderr;
+    import mar.io : stderr;
     import mar.process : exit;
 
     (*i)++;

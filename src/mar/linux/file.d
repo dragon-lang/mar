@@ -32,10 +32,10 @@ struct FileD
     mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
-    void print(P)(P printer) const
+    auto print(P)(P printer) const
     {
         import mar.print : printDecimal;
-        printDecimal(printer, _value);
+        return printDecimal(printer, _value);
     }
 
     void write(T...)(T args) const
@@ -48,16 +48,13 @@ struct FileD
         printArgs(&printer, args);
         printer.flush();
     }
+
     pragma(inline)
     void writeln(T...)(T args) const
     {
         write(args, '\n');
     }
 }
-
-pragma(inline) const(FileD) stdin() pure nothrow @nogc { return FileD(0); }
-pragma(inline) const(FileD) stdout() pure nothrow @nogc { return FileD(1); }
-pragma(inline) const(FileD) stderr() pure nothrow @nogc { return FileD(2); }
 
 pragma(inline)
 auto write(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
@@ -176,7 +173,7 @@ auto formatMode(mode_t mode)
     static struct Formatter
     {
         mode_t mode;
-        void print(P)(P printer) const
+        auto print(P)(P printer) const
         {
             auto buffer = printer.getTempBuffer!10;
             scope (exit) printer.commitBuffer(buffer.commitValue);
@@ -196,6 +193,7 @@ auto formatMode(mode_t mode)
             buffer.putc((mode & ModeFlags.readOther)  ? 'r' : '-');
             buffer.putc((mode & ModeFlags.writeOther) ? 'w' : '-');
             buffer.putc((mode & ModeFlags.execOther)  ? 'x' : '-');
+            return P.success;
         }
     }
     return Formatter(mode);
@@ -328,12 +326,16 @@ ValueOrErrorCode!(mode_t, short) tryGetFileMode(cstring filename)
         typeof(return).error(cast(short)result.numval);
 }
 
-// TODO: move this somewhere
+// TODO: support NoExit
+version (NoExit) { } else
+{
+// TODO: move this somewhere else
 void unreportableError(string Ex, T)(T msg, string file = __FILE__, size_t line = cast(size_t)__LINE__)
 {
     version (D_BetterC)
     {
         import mar.linux.process : exit;
+        import mar.io;
         // write error to stderr
         write(stderr, "unreportable error: ");
         write(stderr, file);
@@ -364,4 +366,5 @@ auto getFileSize(T)(T filename)
 {
     mixin tempCString!("filenameCStr", "filename");
     return getFileSize(filenameCStr.str);
+}
 }
