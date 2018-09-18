@@ -287,7 +287,8 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         pragma(inline) SentinelPtr ptr() const { return SentinelPtr(cast(SpecificT*)array.ptr); }
         pragma(inline) auto opDollar() const { return array.length; }
 
-        pragma(inline) ConstArray asConst() inout { return ConstArray(cast(const(T)[])array); }
+        pragma(inline) ConstArray     asConst()     inout { return ConstArray(cast(const(T)[])array); }
+        pragma(inline) ImmutableArray asImmutable() inout { return ImmutableArray(cast(immutable(T)[])array); }
 
         /**
         A no-op that just returns the array as is.  This is to be useful for templates that can accept

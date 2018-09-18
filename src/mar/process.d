@@ -102,26 +102,26 @@ struct ProcBuilder
         ErrorCase!("outOfMemory", "out of memory"),
         ErrorCase!("forkFailed", "fork failed, returned %", ptrdiff_t));
 
-    // TODO: support NoExit case
-    version (NoExit) { } else
+    /** free memory for arguments */
+    void free()
     {
+        version (Windows)
+            args.free();
+        else version (Posix)
+            args.free();
+    }
 
     /** Start the process and clean the data structures created to start the process */
     StartResult startWithClean(SentinelPtr!cstring envp)
     {
         auto result = startImpl(envp);
-        version (Windows)
-        {
-            args.free();
-        }
-        else version (Posix)
-        {
-            args.free();
-        }
+        free();
         return result;
     }
     private StartResult startImpl(SentinelPtr!cstring envp)
     {
+        import mar.enforce;
+
         version (Windows)
             static assert(0, "not impl");
         else version (Posix)
@@ -137,11 +137,11 @@ struct ProcBuilder
             {
                 auto result = execve(args.data[0], args.data.ptr.assumeSentinel, envp);
                 // TODO: how do we handle this error in the new process?
-                exit( (result.numval == 0) ? 1 : result.numval);
+                enforce(false, "execve failed");
+                //exit( (result.numval == 0) ? 1 : result.numval);
             }
             return StartResult.success(pidResult.val);
         }
-    }
     }
 
     auto print(P)(P printer) const

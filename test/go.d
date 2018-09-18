@@ -31,6 +31,7 @@ immutable modules = [
     "mar/octal.d",
     "mar/sentinel.d",
     "mar/findprog.d",
+    "mar/path.d",
     "mar/process.d",
 ];
 
@@ -129,11 +130,11 @@ void waitEnforceSuccess(pid_t pid)
 
 auto getBasename(inout(char)[] file)
 {
-    return file[file.lastIndexOf('/') + 1 .. $];
+    return file[file.lastIndexOrLength('/') + 1 .. $];
 }
 auto stripExt(inout(char)[] file)
 {
-    return file[0 .. file.lastIndexOf('.')];
+    return file[0 .. file.lastIndexOrLength('.')];
 }
 auto fileToModuleName(const(char)[] file)
 {
@@ -279,7 +280,7 @@ void addObjectFiles(cstring dirname, cstring[] args, size_t* offset)
                     logError("fstatat failed, returned ", statResult.numval);
                     exit(1);
                 }
-                if (isDir(stat.st_mode))
+                if (mar.file.perm.isDir(stat.st_mode))
                 {
                     addObjectFiles(sprintMallocSentinel(dirname, "/", entryName).ptr, args, offset);
                 }

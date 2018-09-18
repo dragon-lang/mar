@@ -9,7 +9,7 @@ module mar.linux.syscall;
 import mar.sentinel : SentinelPtr;
 import mar.c : cstring;
 import mar.linux.cthunk : kernel, mode_t, off_t, loff_t, gid_t, uid_t;
-import mar.linux.file : FileD, stat_t, OpenFlags, AccessMode, SeekFrom;
+import mar.linux.file : FileD, stat_t, OpenFlags, AccessMode, SeekFrom, PipeFds;
 import mar.linux.filesys : linux_dirent;
 import mar.linux.signals : siginfo_t, sigaction_t;
 import mar.linux.process : pid_t, idtype_t, rusage;
@@ -296,6 +296,10 @@ extern (C) SyscallValueResult!ptrdiff_t sys_ioctl(FileD fd, size_t request, void
 }
 
 extern (C) SyscallExpectZero sys_access(cstring filename, AccessMode mode)
+{
+    mixin(passthroughSyscall);
+}
+extern (C) SyscallExpectZero sys_pipe(PipeFds* pipefds)
 {
     mixin(passthroughSyscall);
 }

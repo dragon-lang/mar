@@ -1,45 +1,12 @@
 module mar.input;
 
-struct ReadResult
-{
-    enum State
-    {
-        success,
-        mallocFailed,
-        lineTooLong,
-        readError,
-    }
-    union
-    {
-        char[] data;
-        ptrdiff_t errorCode;
-    }
-    State state;
-    private this(State state)
-    {
-        this.state = state;
-    }
-    bool failed() const { return state > State.success; }
+import mar.expect;
+static import mar.file;
 
-    static auto success(char[] data)
-    {
-        auto result = ReadResult(State.success);
-        result.data = data;
-        return result;
-    }
-    static auto lineTooLong() { return ReadResult(State.lineTooLong); }
-    static auto mallocFailed() { return ReadResult(State.mallocFailed); }
-    static auto readError(ptrdiff_t errorCode)
-    {
-        auto result = ReadResult(State.readError);
-        result.errorCode = errorCode;
-        return result;
-    }
-    auto formatError() const
-    {
-        return "<ReadResult.formatError not implemented>";
-    }
-}
+mixin ExpectMixin!("ReadResult", char[],
+    ErrorCase!("outOfMemory", "out of memory"),
+    ErrorCase!("readError", "read error %", ptrdiff_t),
+    ErrorCase!("lineTooLong", "line is too long"));
 
 struct LineReader(Hooks)
 {
@@ -87,8 +54,8 @@ struct LineReader(Hooks)
                 auto result = Hooks.increaseBuffer(buffer, dataLimit);
                 if (result.failed)
                     return result;
-                assert(result.data.length > this.buffer.length, "code bug");
-                this.buffer = result.data;
+                assert(result.val.length > this.buffer.length, "code bug");
+                this.buffer = result.val;
                 available = buffer.length - dataLimit;
             }
 
@@ -121,7 +88,7 @@ ReadResult defaultMallocIncreaseBuffer(size_t initialLength = 1024)(char[] buffe
 
     auto newBuffer = cast(char*)malloc(newSize);
     if (!newBuffer)
-        return ReadResult.mallocFailed;
+        return ReadResult.outOfMemory;
 
     if (dataLength > 0)
         acopy(newBuffer, buffer[0 .. dataLength]);
@@ -131,7 +98,6 @@ ReadResult defaultMallocIncreaseBuffer(size_t initialLength = 1024)(char[] buffe
 
 struct DefaultFileLineReaderHooks
 {
-    static import mar.file;
     enum minRead = 1;
     static struct Reader
     {
@@ -144,8 +110,7 @@ struct DefaultFileLineReaderHooks
     }
     mixin template ReaderMixinTemplate()
     {
-        import mar.file : FileD;
-        this(FileD file)
+        this(mar.file.FileD file)
         {
             this.reader = Hooks.Reader(file);
         }
@@ -165,8 +130,7 @@ struct DefaultFileLineReaderHooks
 unittest
 {
     {
-        import mar.file : FileD;
-        auto reader = LineReader!DefaultFileLineReaderHooks(FileD(-1));
+        auto reader = LineReader!DefaultFileLineReaderHooks(mar.file.FileD(-1));
         auto result = reader.readln();
         assert(result.failed);
         assert(result.state == ReadResult.State.readError);
@@ -218,7 +182,7 @@ unittest
         auto reader = LineReader!TestHooks("", 1);
         auto result = reader.readln();
         assert(!result.failed);
-        assert(result.data.length == 0);
+        assert(result.val.length == 0);
     }
 
     static struct TestCase
@@ -264,13 +228,56 @@ unittest
             {
                 auto result = reader.readln();
                 assert(!result.failed);
-                assert(result.data == line);
+                assert(result.val == line);
             }
             {
                 auto result = reader.readln();
                 assert(!result.failed);
-                assert(result.data.length == 0);
+                assert(result.val.length == 0);
             }
         }
     }
+}
+
+// TODO: support the ability to get the file size beforehand
+ReadResult readAllMalloc(mar.file.FileD file, size_t initialSize = 4096)
+{
+    import mar.mem : malloc, free, reallocOrSaveArray;
+    import mar.file : read;
+
+    char[] buffer;
+    {
+        auto ptr = malloc(initialSize);
+        if (ptr is null)
+            return ReadResult.outOfMemory;
+        buffer = (cast(char*)ptr)[0 .. initialSize];
+    }
+    size_t totalRead = 0;
+
+    for (;;)
+    {
+        {
+            //import mar.io; stdout.writeln("[DEBUG] read...");
+            auto result = read(file, buffer[totalRead .. $]);
+            //import mar.io; stdout.writeln("[DEBUG] read returned ", result.numval);
+            if (result.numval <= 0)
+            {
+                if (result.failed)
+                    return ReadResult.readError(result.numval);
+                return ReadResult.success(buffer[0 .. totalRead]);
+            }
+            totalRead += result.val;
+        }
+        if (totalRead >= buffer.length)
+        {
+            auto newBuffer = reallocOrSaveArray(buffer.ptr, buffer.length * 2, totalRead);
+            if (newBuffer is null)
+            {
+                free(buffer.ptr);
+                return ReadResult.outOfMemory;
+            }
+            buffer = newBuffer;
+        }
+    }
+
 }

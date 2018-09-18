@@ -110,7 +110,9 @@ struct JsonValue
         }
         else static if( is(T == string) )
         {
-            assert(type == JsonType.string, "expected json value to be a string but got " ~ type.to!string);
+            if (type == JsonType.null_)
+                return null;
+            assert(type == JsonType.string, "expected json value to be a string (or null) but got " ~ type.to!string);
             return stringData;
         }
         else static if( is(T == JsonValue[]) )

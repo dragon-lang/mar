@@ -10,9 +10,31 @@ else
     alias malloc = core.stdc.stdlib.malloc;
     alias free = core.stdc.stdlib.free;
     alias realloc = core.stdc.stdlib.realloc;
+    /*
+    auto malloc(size_t size)
+    {
+        auto result = core.stdc.stdlib.malloc(size);
+        import mar.io; stdout.writeln("[DEBUG] malloc(", size, ") ", result);
+        return result;
+    }
+    auto free(void* mem)
+    {
+        import mar.io; stdout.writeln("[DEBUG] free ", mem);
+        core.stdc.stdlib.free(mem);
+    }
+    auto realloc(void* mem, size_t size)
+    {
+        auto result = core.stdc.stdlib.realloc(mem, size);
+        import mar.io; stdout.writeln("[DEBUG] realloc(", mem, ", ", size, ") ", result);
+        return result;
+    }
+    */
     // Returns: true if it resized, false otherwise
     bool tryRealloc(void* mem, size_t size)
     {
+        return false;
+        /*
+        THIS DOESN'T WORK PROPERLY
         if (mem is null)
             return false;
         auto result = realloc(mem, size);
@@ -21,8 +43,46 @@ else
         // NOTE: this is not ideal
         free(result);
         return false;
+        */
     }
 }
+
+pragma(inline)
+auto reallocOrSave(T)(T* array, size_t newLength, size_t preserveLength)
+{
+    return cast(T*)reallocOrSaveImpl(array.ptr, newLength * T.sizeof, preserveLength * T.sizeof);
+}
+pragma(inline)
+auto reallocOrSaveArray(T)(T* arrayPtr, size_t newLength, size_t preserveLength)
+{
+    auto result = reallocOrSaveImpl(arrayPtr, newLength * T.sizeof, preserveLength * T.sizeof);
+    if (result is null)
+        return null;
+    return (cast(T*)result)[0 .. newLength];
+}
+pragma(inline)
+auto reallocOrSave(T)(T[] array, size_t newLength, size_t preserveLength)
+{
+    auto result = reallocOrSaveImpl(array.ptr, newLength * T.sizeof, preserveLength * T.sizeof);
+    if (result is null)
+        return null;
+    return (cast(T*)result)[0 .. newLength];
+}
+void* reallocOrSaveImpl(void* mem, size_t newByteSize, size_t preserveByteSize)
+{
+    import mar.array : acopy;
+
+    if (tryRealloc(mem, newByteSize))
+        return mem;
+
+    auto newBuffer = malloc(newByteSize);
+    if (!newBuffer)
+        return null;
+    acopy(newBuffer, mem, preserveByteSize);
+    free(mem);
+    return newBuffer;
+}
+
 
 version (NoStdc)
 {

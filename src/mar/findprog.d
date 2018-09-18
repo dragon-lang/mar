@@ -6,7 +6,8 @@ import mar.file : fileExists;
 
 bool usePath(T)(T program)
 {
-    auto slashIndex = program.indexOf('/');
+    import mar.array : indexOrMax;
+    auto slashIndex = program.indexOrMax('/');
     return slashIndex == slashIndex.max;
 }
 
@@ -46,6 +47,7 @@ struct PathIterator
     this(cstring pathEnv)
     {
         this.current = pathEnv[0 .. 0];
+        popFront();
     }
     bool empty() const { return current.ptr == null; }
     auto front() const { return current; }

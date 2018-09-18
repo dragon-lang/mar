@@ -86,6 +86,13 @@ struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
         return MemoryResult.success;
     }
 
+    auto pop()
+    {
+        auto result = buffer[count-1];
+        count--;
+        return result;
+    }
+
     void free()
     {
         Policy.free(buffer);

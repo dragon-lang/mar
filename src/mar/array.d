@@ -24,7 +24,7 @@ bool contains(T, U)(T arr, U elem)
 {
     return indexOf!(T,U)(arr, elem) != arr.length;
 }
-auto indexOf(T, U)(T arr, U elem)
+auto indexOrLength(T, U)(T arr, U elem)
 {
     foreach(i; 0 .. arr.length)
     {
@@ -33,7 +33,7 @@ auto indexOf(T, U)(T arr, U elem)
     }
     return arr.length;
 }
-auto lastIndexOf(T, U)(T arr, U elem)
+auto lastIndexOrLength(T, U)(T arr, U elem)
 {
     foreach_reverse(i; 0 .. arr.length)
     {
@@ -41,6 +41,29 @@ auto lastIndexOf(T, U)(T arr, U elem)
             return i;
     }
     return arr.length;
+}
+
+auto indexOrMax(T, U)(T arr, U elem)
+{
+    size_t i = 0;
+    foreach(ref e; arr)
+    {
+        if (e is elem)
+            return i;
+        i++;
+    }
+    return typeof(return).max;
+}
+auto lastIndexOrMax(T, U)(T arr, U elem)
+{
+    size_t i = arr.length;
+    foreach_reverse(ref e; arr)
+    {
+        i--;
+        if (e is elem)
+            return i;
+    }
+    return typeof(return).max;
 }
 
 auto find(T, U)(inout(T)* ptr, const(T)* limit, U elem)

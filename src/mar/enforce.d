@@ -62,30 +62,59 @@ private template Replace(size_t Index, alias With, Types, Values...)
     }
 }
 
+version (D_BetterC) { } else
+{
+    /**
+    Thrown when an enforce fails.  Note that an enforce statement will have already printed
+    an error to stderr, so the error does not need to be printed in the catch clause.
+    */
+    class EnforceException : Exception
+    {
+        this()
+        {
+            super("an enforce failed, see error above");
+        }
+    }
+}
+
 void enforce(E...)(bool cond, E errorMsgValues)
 {
     if (!cond)
     {
-        import mar.process : exit;
         import mar.io : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else
             stderr.writeln("Error: ",  errorMsgValues);
-        exit(1);
+        version (D_BetterC)
+        {
+            import mar.process : exit;
+            exit(1);
+        }
+        else
+        {
+            throw new EnforceException();
+        }
     }
 }
 void enforce(T, E...)(T result, E errorMsgValues) if (__traits(hasMember, T, "failed"))
 {
     if (result.failed)
     {
-        import mar.process : exit;
         import mar.io : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else
             stderr.writeln("Error: ",  Replace!(0, result, SubAliases!E, errorMsgValues));
-        exit(1);
+        version (D_BetterC)
+        {
+            import mar.process : exit;
+            exit(1);
+        }
+        else
+        {
+            throw new EnforceException();
+        }
     }
 }
 

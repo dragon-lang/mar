@@ -9,15 +9,18 @@ On errors, prints a message to stderr and exits.
 */
 auto getOptArg(T)(T args, uint* i)
 {
+    import mar.enforce;
     import mar.io : stderr;
-    import mar.process : exit;
 
     (*i)++;
-    auto arg = args[*i];
-    if (arg == arg.nullValue)
+    static if (__traits(hasMember, args, "length"))
     {
-        stderr.write("Error: option \"", args[(*i)-1], "\" requires an argument\n");
-        exit(1);        
+        enforce((*i) < args.length, "Error: option '", args[(*i)-1], "' requires an argument");
+    }
+    auto arg = args[*i];
+    static if (!__traits(hasMember, args, "length"))
+    {
+        enforce(arg != arg.nullValue, "Error: option '", args[(*i)-1], "' requires an argument");
     }
     return arg;
 }
