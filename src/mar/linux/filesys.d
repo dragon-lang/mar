@@ -11,6 +11,8 @@ alias mkdir    = sys_mkdir;
 alias rmdir    = sys_rmdir;
 alias link     = sys_link;
 alias unlink   = sys_unlink;
+alias symlink  = sys_symlink;
+alias readlink = sys_readlink;
 alias getcwd   = sys_getcwd;
 alias chdir    = sys_chdir;
 alias chroot   = sys_chroot;
@@ -25,6 +27,10 @@ pragma(inline) auto chdir(T)(T path) if (!is(path : cstring))
     return sys_chdir(pathCStr.str);
 }
 
+pragma(inline) auto readlink(cstring path, char[] buffer)
+{
+    return readlink(path, buffer.ptr, buffer.length);
+}
 
 /**
 Taken from http://insanecoding.blogspot.com/2007/11/pathmax-simply-isnt.html

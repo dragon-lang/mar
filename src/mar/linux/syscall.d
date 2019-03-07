@@ -344,6 +344,14 @@ extern (C) SyscallExpectZero sys_unlink(cstring pathname)
 {
     mixin(passthroughSyscall);
 }
+extern (C) SyscallExpectZero sys_symlink(cstring target, cstring linkpath)
+{
+    mixin(passthroughSyscall);
+}
+extern (C) SyscallExpectZero sys_readlink(cstring pathname, char* buf, size_t size)
+{
+    mixin(passthroughSyscall);
+}
 extern (C) SyscallExpectZero sys_chdir(cstring path)
 {
     mixin(passthroughSyscall);
