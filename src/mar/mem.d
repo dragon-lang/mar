@@ -14,18 +14,18 @@ else
     auto malloc(size_t size)
     {
         auto result = core.stdc.stdlib.malloc(size);
-        import mar.io; stdout.writeln("[DEBUG] malloc(", size, ") ", result);
+        import mar.stdio; stdout.writeln("[DEBUG] malloc(", size, ") ", result);
         return result;
     }
     auto free(void* mem)
     {
-        import mar.io; stdout.writeln("[DEBUG] free ", mem);
+        import mar.stdio; stdout.writeln("[DEBUG] free ", mem);
         core.stdc.stdlib.free(mem);
     }
     auto realloc(void* mem, size_t size)
     {
         auto result = core.stdc.stdlib.realloc(mem, size);
-        import mar.io; stdout.writeln("[DEBUG] realloc(", mem, ", ", size, ") ", result);
+        import mar.stdio; stdout.writeln("[DEBUG] realloc(", mem, ", ", size, ") ", result);
         return result;
     }
     */

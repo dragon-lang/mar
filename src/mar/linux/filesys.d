@@ -153,7 +153,7 @@ struct LinuxDirentRange
     auto front() { return next; }
     void popFront()
     {
-        import mar.io : stderr;
+        import mar.stdio : stderr;
         import mar.process : exit;
         if (next[0].d_reclen > size)
         {

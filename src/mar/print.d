@@ -109,7 +109,7 @@ unittest
     char[] str(T)(T num)
     {
         auto result = buffer[0 .. sprint(buffer, num)];
-        import mar.io; stdout.writeln("TestNumber: ", result);
+        import mar.stdio; stdout.writeln("TestNumber: ", result);
         return result;
     }
 
@@ -244,10 +244,9 @@ else
         static CannotFail success() { return CannotFail(); }
         static CannotFail writeFailed(FileD dest, size_t writeSize, ptrdiff_t returnValue)
         {
-            import mar.io : stderr;
-            import mar.file : write;
+            import mar.stdio : stderr;
             import mar.process : exit;
-            write(stderr, "Error: write failed! (TODO: print error writeSize and returnValue)");
+            stderr.write("Error: write failed! (TODO: print error writeSize and returnValue)");
             exit(1);
             assert(0);
         }
@@ -267,7 +266,7 @@ struct DefaultPrinterBuffer
 struct BufferedFilePrinter(Policy)
 {
     import mar.array : acopy;
-    import mar.file : FileD, write;
+    import mar.file : FileD;
 
     static assert(__traits(hasMember, Policy, "PutResult"));
     static assert(__traits(hasMember, Policy, "success"));
@@ -287,9 +286,9 @@ struct BufferedFilePrinter(Policy)
     {
         if (bufferedLength > 0)
         {
-            auto result = write(fd, buffer[0 .. bufferedLength]);
-            if (result.val != bufferedLength)
-                return Policy.writeFailed(fd, bufferedLength, result.numval);
+            auto result = fd.tryWrite(buffer, bufferedLength);
+            if (result.failed)
+                return Policy.writeFailed(fd, bufferedLength, result.errorCode/*, result.onFailWritten*/);
             bufferedLength = 0;
         }
         return success;
@@ -305,9 +304,9 @@ struct BufferedFilePrinter(Policy)
                     return result;
             }
             {
-                auto result = write(fd, str);
-                if (result.val != str.length)
-                    return Policy.writeFailed(fd, str.length, result.numval);
+                auto result = fd.tryWrite(str);
+                if (result.failed)
+                    return Policy.writeFailed(fd, str.length, result.errorCode/*, result.onFailWritten*/);
             }
         }
         else

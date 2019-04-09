@@ -82,7 +82,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
     {
         if (failed)
         {
-            import mar.io : stderr;
+            import mar.stdio : stderr;
             stderr.writeln("Error: ", this);
             return true;
         }
@@ -95,7 +95,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
             if (failed)
             {
                 import mar.process : exit;
-                import mar.io : stderr;
+                import mar.stdio : stderr;
                 stderr.writeln("Error: ", this);
                 exit(1);
             }

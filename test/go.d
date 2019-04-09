@@ -11,8 +11,8 @@ import mar.sentinel;
 import mar.c;
 import mar.print;
 import mar.file;
-import mar.io;
-import mar.linux.filesys;
+import mar.stdio;
+import mar.filesys;
 import mar.env;
 import mar.findprog;
 import mar.linux.process;
@@ -44,7 +44,10 @@ __gshared cstring pathEnv;
 void loggy_mkdir(cstring dirname)
 {
     stdout.writeln("mkdir '", dirname);
-    mkdir(dirname, S_IRWXU | S_IRWXG | S_IRWXO)
+    auto mkdirConfig = MkdirConfig();
+    version (linux)
+        mkdirConfig.setPosixMode(S_IRWXU | S_IRWXG | S_IRWXO);
+    mkdir(dirname, mkdirConfig)
         .enforce("mkdir '", dirname, "' failed, returned ", Result.val);
 }
 
@@ -152,7 +155,7 @@ auto fileToModuleName(const(char)[] file)
 void testModule(const(char)[] mod)
 {
     stdout.writeln("--------------------------------------------------------------------------------");
-    stdout.writeln("Testint module: ", mod);
+    stdout.writeln("Testing module: ", mod);
     stdout.writeln("--------------------------------------------------------------------------------");
     auto basename = getBasename(mod);
     auto dirname = sprintMallocSentinel("out/", stripExt(basename));
@@ -179,7 +182,7 @@ void testModule(const(char)[] mod)
         enforce(mainSource.isValid, "open '", mainSourceName, "' failed, returned ", mainSource.numval);
         scope (exit) close(mainSource);
 
-        mainSource.writeln("import mar.io;");
+        mainSource.writeln("import mar.stdio;");
         mainSource.writeln();
         auto modName = fileToModuleName(mod);
         mainSource.writeln("// import module we are testing");
