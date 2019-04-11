@@ -10,7 +10,7 @@ On errors, prints a message to stderr and exits.
 auto getOptArg(T)(T args, uint* i)
 {
     import mar.enforce;
-    import mar.io : stderr;
+    import mar.stdio : stderr;
 
     (*i)++;
     static if (__traits(hasMember, args, "length"))

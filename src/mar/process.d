@@ -11,20 +11,26 @@ version (linux)
 
 version (NoExit) {} else
 {
-    void exit(ptrdiff_t exitCode)
+    version (linux)
     {
-        version (linux)
+        alias exit = mar.linux.process.exit;
+    }
+    else version (Windows)
+    {
+        pragma(inline)
+        void exit(uint exitCode)
         {
-            import mar.linux.process : exit;
-            exit(exitCode);
+            import mar.windows.kernel32 : ExitProcess;
+            ExitProcess(exitCode);
         }
-        else version (Windows)
-        {
-            assert(0, "exit not implemented on windows");
-        }
-        else static assert(0, "unsupported platform");
     }
 }
+
+version (linux)
+    alias ProcID = pid_t;
+else version (Windows)
+    alias ProcID = int; // TODO: this is not right
+else static assert(0, "unsupported platform");
 
 /**
 TODO: create api for what environment variables to pass
@@ -61,14 +67,20 @@ struct ProcBuilder
     private this(cstring program)
     {
         version (Windows)
-            this.program = program.walkToArray;
+        {
+            assert (0, "mar.process ProcBuilder.ctor:cstring not impl");
+            //this.program = program.walkToArray;
+        }
         else version (Posix)
             assert(args.tryPut(program).passed, "out of memory");
     }
     private this(SentinelArray!(const(char)) program)
     {
         version (Windows)
-            this.program = program;
+        {
+            assert (0, "mar.process ProcBuilder.ctor:SentinelArray not impl");
+            //this.program = program;
+        }
         else version (Posix)
             assert(args.tryPut(program.ptr).passed, "out of memory");
     }
@@ -76,8 +88,10 @@ struct ProcBuilder
     auto tryPut(cstring arg)
     {
         version (Windows)
+        {
             // TODO: append to args, make sure it is escaped if necessary
-            static assert (0, "not impl");
+            assert (0, "mar.process ProcBuilder.tryPut:cstring not impl");
+        }
         else version (Posix)
             return args.tryPut(arg);
     }
@@ -86,7 +100,7 @@ struct ProcBuilder
     {
         auto tryPut(SentinelArray!(const(char)) arg)
         {
-            static assert(0, "not impl");
+            assert (0, "mar.process ProcBuilder.tryPut:SentinelArray not impl");
         }
     }
     else version (Posix)
@@ -98,7 +112,7 @@ struct ProcBuilder
         }
     }
 
-    mixin ExpectMixin!("StartResult", pid_t,
+    mixin ExpectMixin!("StartResult", ProcID,
         ErrorCase!("outOfMemory", "out of memory"),
         ErrorCase!("forkFailed", "fork failed, returned %", ptrdiff_t));
 
@@ -123,7 +137,9 @@ struct ProcBuilder
         import mar.enforce;
 
         version (Windows)
-            static assert(0, "not impl");
+        {
+            assert (0, "mar.process ProcBuilder.startImpl not impl");
+        }
         else version (Posix)
         {
             if (tryPut(cstring.nullValue).failed)
@@ -178,17 +194,18 @@ unittest
 {
     import mar.sentinel;
     import mar.c : cstring;
+
     {
-        auto proc = ProcBuilder.forExeFile(lit!"/bin/ls");
+        auto proc = ProcBuilder.forExeFile(lit!"/usr/bin/env");
         auto startResult = proc.startWithClean(SentinelPtr!cstring.nullValue);
         if (startResult.failed)
         {
-            import mar.io; stdout.write("proc start failed: %s", startResult);
+            import mar.stdio; stdout.write("proc start failed: %s", startResult);
         }
         else
         {
             import mar.linux.process : wait;
-            import mar.io; stdout.write("started ls!\n");
+            import mar.stdio; stdout.write("started /usr/bin/env\n");
             auto waitResult = wait(startResult.val);
             stdout.write("waitResult is ", waitResult, "\n");
             assert(!waitResult.failed);
@@ -198,6 +215,6 @@ unittest
         auto proc = ProcBuilder.forExeFile(lit!"a");
         assert(proc.tryPut(lit!"b").passed);
         assert(proc.tryPut(litPtr!"b").passed);
-        import mar.io; stdout.writeln(proc);
+        import mar.stdio; stdout.writeln(proc);
     }
 }

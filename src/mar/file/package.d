@@ -9,40 +9,169 @@ version (linux)
 else version (Windows)
 {
     public import mar.windows.file;
+    import mar.windows.kernel32 : CloseHandle;
+    // dummy mode flags for windows
+    enum ModeFlags
+    {
+        execOther  = 0,
+        writeOther = 0,
+        readOther  = 0,
+        execGroup  = 0,
+        writeGroup = 0,
+        readGroup  = 0,
+        execUser   = 0,
+        writeUser  = 0,
+        readUser   = 0,
+        isFifo     = 0,
+        isCharDev  = 0,
+        isDir      = 0,
+        isRegFile  = 0,
+    }
 }
 else static assert(0, __MODULE__ ~ " is not supported on this platform");
+
+static struct ModeSet
+{
+    enum rwxOther = ModeFlags.readOther | ModeFlags.writeOther | ModeFlags.execOther;
+    enum rwxGroup = ModeFlags.readGroup | ModeFlags.writeGroup | ModeFlags.execGroup;
+    enum rwxUser  = ModeFlags.readUser  | ModeFlags.writeUser  | ModeFlags.execUser;
+
+    enum rwOther = ModeFlags.readOther | ModeFlags.writeOther;
+    enum rwGroup = ModeFlags.readGroup | ModeFlags.writeGroup;
+    enum rwUser  = ModeFlags.readUser  | ModeFlags.writeUser ;
+}
 
 /**
 Platform independent open file configuration
 */
-struct OpenFileConfig
+struct OpenFileOpt
 {
     version (linux)
     {
-        import mar.linux.file : OpenFlags;
-        OpenFlags getPosixFlags() const
+        import mar.linux.cthunk : mode_t;
+        import mar.linux.file.perm : ModeFlags;
+
+        private OpenFlags flags;
+        private mode_t _mode;
+    }
+    else version (Windows)
+    {
+        private OpenAccess access;
+        private FileShareMode shareMode;
+        private FileCreateMode createMode;
+    }
+
+    this(OpenAccess access)
+    {
+        version (linux)
         {
-            assert(0, "not impl");
+            this.flags = OpenFlags(access);
         }
-        uint getPosixMode() const
+        else version (Windows)
         {
-            assert(0, "not impl");
+            this.access = access;
+            this.createMode = FileCreateMode.openExisting;
         }
+        else static assert(0, __MODULE__ ~ " is not supported on this platform");
+    }
+
+    /// create a new file if it doesn't exist, otherwise, fail
+    pragma(inline)
+    auto ref createOnly()
+    {
+        version (linux)
+            this.flags.val |= OpenCreateFlags.creat | OpenCreateFlags.excl;
+        else version (Windows)
+            this.createMode = FileCreateMode.createNew;
+        return this;
+    }
+    // create a new file, truncate it if it already exists
+    pragma(inline)
+    auto ref createOrTruncate()
+    {
+        version (linux)
+            this.flags.val |= OpenCreateFlags.creat | OpenCreateFlags.trunc;
+        else version (Windows)
+            this.createMode = FileCreateMode.createAlways;
+        return this;
+    }
+    // create a new file or open the existing file
+    pragma(inline)
+    auto ref createOrOpen()
+    {
+        version (linux)
+            this.flags.val |= OpenCreateFlags.creat;
+        else version (Windows)
+            this.createMode = FileCreateMode.openExisting;
+        return this;
+    }
+
+    pragma(inline)
+    auto ref shareDelete()
+    {
+        version (Windows)
+            shareMode |= FileShareMode.delete_;
+        return this;
+    }
+    pragma(inline)
+    auto ref shareRead()
+    {
+        version (Windows)
+            shareMode |= FileShareMode.read;
+        return this;
+    }
+    pragma(inline)
+    auto ref shareWrite()
+    {
+        version (Windows)
+            shareMode |= FileShareMode.write;
+        return this;
+    }
+
+    pragma(inline)
+    auto ref mode(ModeFlags modeFlags)
+    {
+        version (linux)
+            this._mode = modeFlags;
+        // ignore on windows
+        return this;
     }
 }
 
 /**
 Platform independent open file function
 */
-FileD openFile(cstring filename, OpenFileConfig config)
+FileD tryOpenFile(cstring filename, OpenFileOpt opt)
 {
     version (linux)
     {
-        return open(filename, config.getPosixFlags, config.getPosixMode);
+        return open(filename, opt.flags, opt._mode);
     }
     else version (Windows)
     {
-        assert(0, "not impl");
+        import mar.windows.types : Handle;
+        import mar.windows.kernel32 : CreateFileA;
+
+        return CreateFileA(filename, opt.access, opt.shareMode, null, opt.createMode, 0, Handle.nullValue);
     }
     else static assert(0, __FUNCTION__ ~ " is not supported on this platform");
 }
+
+/+
+version (linux)
+    alias closeFile = close;
+else version (Windows)
+
+{
+    alias closeFile = CloseHandle;
+    auto closeFile(FileD)
+}
++/
+
+
+/*
+FileD createFile(cstring filename)
+{
+
+}
+*/

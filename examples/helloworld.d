@@ -4,17 +4,19 @@
 //!version NoStdc
 //!noConfigFile
 //!betterC
+//!debug
+//!debugSymbols
 
 /**
 This example hello world program will compile without any libraries, no C
 standard library, no D runtime, not even the library that contains the `_start`
 symbol.
 
-NOTE: only linux x86_64 currently supported
+NOTE: only x86_64 is currently supported
 */
 import mar.sentinel;
 import mar.c;
-import mar.linux.file;
+import mar.stdio;
 
 import mar.start;
 mixin(startMixin);

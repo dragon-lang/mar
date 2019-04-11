@@ -257,9 +257,9 @@ ReadResult readAllMalloc(mar.file.FileD file, size_t initialSize = 4096)
     for (;;)
     {
         {
-            //import mar.io; stdout.writeln("[DEBUG] read...");
+            //import mar.stdio; stdout.writeln("[DEBUG] read...");
             auto result = read(file, buffer[totalRead .. $]);
-            //import mar.io; stdout.writeln("[DEBUG] read returned ", result.numval);
+            //import mar.stdio; stdout.writeln("[DEBUG] read returned ", result.numval);
             if (result.numval <= 0)
             {
                 if (result.failed)

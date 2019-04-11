@@ -81,7 +81,7 @@ void enforce(E...)(bool cond, E errorMsgValues)
 {
     if (!cond)
     {
-        import mar.io : stderr;
+        import mar.stdio : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else
@@ -101,7 +101,7 @@ void enforce(T, E...)(T result, E errorMsgValues) if (__traits(hasMember, T, "fa
 {
     if (result.failed)
     {
-        import mar.io : stderr;
+        import mar.stdio : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else
@@ -122,7 +122,7 @@ passfail reportFail(E...)(bool cond, E errorMsgValues)
 {
     if (!cond)
     {
-        import mar.io : stderr;
+        import mar.stdio : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else
@@ -135,7 +135,7 @@ passfail reportFail(T, E...)(T result, E errorMsgValues) if (__traits(hasMember,
 {
     if (result.failed)
     {
-        import mar.io : stderr;
+        import mar.stdio : stderr;
         static if (E.length == 0)
             stderr.writeln("An error occurred");
         else

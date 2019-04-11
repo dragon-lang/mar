@@ -251,11 +251,11 @@ q{
     }
 };
 
-extern (C) SyscallValueResult!size_t sys_read(FileD fd, void* buf, size_t n)
+extern (C) SyscallValueResult!size_t sys_read(const FileD fd, void* buf, size_t n)
 {
     mixin(passthroughSyscall);
 }
-extern (C) SyscallValueResult!size_t sys_write(FileD fd, const(void)* buf, size_t n)
+extern (C) SyscallValueResult!size_t sys_write(const FileD fd, const(void)* buf, size_t n)
 {
     mixin(passthroughSyscall);
 }
@@ -270,7 +270,7 @@ extern (C) FileD sys_openat(FileD dirFd, cstring pathname, OpenFlags flags, uint
     mixin(passthroughSyscall4);
 }
 
-extern (C) SyscallExpectZero sys_close(FileD fd)
+extern (C) SyscallExpectZero sys_close(const FileD fd)
 {
     mixin(passthroughSyscall);
 }

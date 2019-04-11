@@ -11,12 +11,13 @@ import mar.sentinel;
 import mar.c;
 import mar.print;
 import mar.file;
-import mar.io;
-import mar.linux.filesys;
+import mar.stdio;
+import mar.filesys;
 import mar.env;
 import mar.findprog;
-import mar.linux.process;
-import mar.linux.signals;
+import mar.process;
+version (linux)
+    import mar.linux.signals;
 
 immutable modules = [
     "mar/enforce.d",
@@ -27,7 +28,7 @@ immutable modules = [
     "mar/input.d",
     "mar/c.d",
     "mar/octal.d",
-    "mar/mem_mmap.d",
+    "mar/mem/mmap.d",
     "mar/octal.d",
     "mar/sentinel.d",
     "mar/findprog.d",
@@ -44,7 +45,10 @@ __gshared cstring pathEnv;
 void loggy_mkdir(cstring dirname)
 {
     stdout.writeln("mkdir '", dirname);
-    mkdir(dirname, S_IRWXU | S_IRWXG | S_IRWXO)
+    auto mkdirConfig = MkdirConfig();
+    version (linux)
+        mkdirConfig.setPosixMode(S_IRWXU | S_IRWXG | S_IRWXO);
+    mkdir(dirname, mkdirConfig)
         .enforce("mkdir '", dirname, "' failed, returned ", Result.val);
 }
 
@@ -81,50 +85,65 @@ void logError(T...)(T args)
     stderr.writeln("Error: ", args);
 }
 
-pid_t run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
+version (linux)
 {
-    if (usePath(argv[0]))
+    import mar.linux.process;
+    ProcID run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
     {
-        auto result = findProgram(pathEnv, argv[0].walkToArray.array);
-        enforce(!result.isNull, "cannot find program '", argv[0], "'");
-        argv[0] = result;
+        if (usePath(argv[0]))
+        {
+            auto result = findProgram(pathEnv, argv[0].walkToArray.array);
+            enforce(!result.isNull, "cannot find program '", argv[0], "'");
+            argv[0] = result;
+        }
+
+        stdout.write("[EXEC]");
+        for(size_t i = 0; ;i++)
+        {
+            auto arg = argv[i];
+            if (!arg) break;
+            stdout.write(" \"", arg, "\"");
+        }
+        stdout.writeln();
+        auto pidResult = fork();
+        if (pidResult.val == 0)
+        {
+            auto result = execve(argv[0], argv, envp);
+            logError("execve returned ", result.numval);
+            exit(1);
+        }
+        enforce(pidResult, "fork failed, returned ", pidResult.numval);
+        return pidResult.val;
     }
 
-    stdout.write("[EXEC]");
-    for(size_t i = 0; ;i++)
+    auto wait(ProcID pid)
     {
-        auto arg = argv[i];
-        if (!arg) break;
-        stdout.write(" \"", arg, "\"");
+        siginfo_t info;
+
+        waitid(idtype_t.pid, pid, &info, WEXITED, null)
+            .enforce("waitid failed, returned ", Result.val);
+        return info.si_status;
     }
-    stdout.writeln();
-    auto pidResult = fork();
-    if (pidResult.val == 0)
+
+    void waitEnforceSuccess(ProcID pid)
     {
-        auto result = execve(argv[0], argv, envp);
-        logError("execve returned ", result.numval);
-        exit(1);
+        auto exitCode = wait(pid);
+        if (exitCode != 0)
+        {
+            logError("last program failed (exit code is ", exitCode, ")");
+            exit(exitCode);
+        }
     }
-    enforce(pidResult, "fork failed, returned ", pidResult.numval);
-    return pidResult.val;
 }
-
-auto wait(pid_t pid)
+else version (Windows)
 {
-    siginfo_t info;
-
-    waitid(idtype_t.pid, pid, &info, WEXITED, null)
-        .enforce("waitid failed, returned ", Result.val);
-    return info.si_status;
-}
-
-void waitEnforceSuccess(pid_t pid)
-{
-    auto exitCode = wait(pid);
-    if (exitCode != 0)
+    ProcID run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
     {
-        logError("last program failed (exit code is ", exitCode, ")");
-        exit(exitCode);
+        assert(0, "not impl");
+    }
+    void waitEnforceSuccess(ProcID pid)
+    {
+        assert(0, "not impl");
     }
 }
 
@@ -152,7 +171,7 @@ auto fileToModuleName(const(char)[] file)
 void testModule(const(char)[] mod)
 {
     stdout.writeln("--------------------------------------------------------------------------------");
-    stdout.writeln("Testint module: ", mod);
+    stdout.writeln("Testing module: ", mod);
     stdout.writeln("--------------------------------------------------------------------------------");
     auto basename = getBasename(mod);
     auto dirname = sprintMallocSentinel("out/", stripExt(basename));
@@ -174,12 +193,16 @@ void testModule(const(char)[] mod)
 
     stdout.writeln("generating '", mainSourceName, "'");
     {
-        auto mainSource = open(mainSourceName.ptr, OpenFlags(OpenAccess.writeOnly, OpenCreateFlags.creat),
-            (S_IRUSR | S_IWUSR) | (S_IRGRP | S_IWGRP) | (S_IROTH));
+        auto mainSource = tryOpenFile(mainSourceName.ptr, OpenFileOpt(OpenAccess.writeOnly)
+            .createOrTruncate
+            .mode(ModeSet.rwUser | ModeSet.rwGroup | ModeFlags.readOther));
+        //auto mainSource = open(mainSourceName.ptr, OpenFlags(OpenAccess.writeOnly, OpenCreateFlags.creat),
+        //    (S_IRUSR | S_IWUSR) | (S_IRGRP | S_IWGRP) | (S_IROTH));
         enforce(mainSource.isValid, "open '", mainSourceName, "' failed, returned ", mainSource.numval);
-        scope (exit) close(mainSource);
+        //scope (exit) close(mainSource);
+        scope (exit) mainSource.close();
 
-        mainSource.writeln("import mar.io;");
+        mainSource.writeln("import mar.stdio;");
         mainSource.writeln();
         auto modName = fileToModuleName(mod);
         mainSource.writeln("// import module we are testing");
@@ -219,8 +242,11 @@ extern (C) int main(uint argc, void* argv, void* envp)
        waitEnforceSuccess(run(compileArgs.ptr.assumeSentinel, envp));
     }
     stdout.writeln("rm '", mainSourceName, "'");
-    unlink(mainSourceName.ptr)
-        .enforce("unlink '", mainSourceName, "' failed, returned ", Result.val);
+    version (linux)
+    {
+        unlink(mainSourceName.ptr)
+            .enforce("unlink '", mainSourceName, "' failed, returned ", Result.val);
+    }
 
     auto exeName = sprintMallocSentinel(dirname, "/runtests");
     {
@@ -241,6 +267,7 @@ extern (C) int main(uint argc, void* argv, void* envp)
     }
 }
 
+version (linux)
 void addObjectFiles(cstring dirname, cstring[] args, size_t* offset)
 {
     auto dirfd = open(dirname, OpenFlags(OpenAccess.readOnly, OpenCreateFlags.dir));
@@ -287,4 +314,10 @@ void addObjectFiles(cstring dirname, cstring[] args, size_t* offset)
             }
         }
     }
+}
+
+version (Windows)
+void addObjectFiles(cstring dirname, cstring[] args, size_t* offset)
+{
+    assert(0, "not impl");
 }

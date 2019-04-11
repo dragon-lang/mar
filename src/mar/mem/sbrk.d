@@ -1,4 +1,4 @@
-module mar.mem;
+module mar.mem.sbrk;
 
 import mar.typecons : enforce;
 

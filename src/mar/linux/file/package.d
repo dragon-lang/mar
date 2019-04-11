@@ -22,6 +22,27 @@ alias stat = sys_stat;
 alias fstat = sys_fstat;
 alias lstat = sys_lstat;
 
+struct WriteResult
+{
+    ptrdiff_t _value;
+
+    pragma(inline) bool failed() const { return _value != 0; }
+    pragma(inline) bool passed() const { return _value == 0; }
+
+    pragma(inline) size_t onFailWritten() const in { assert(_value != 0, "code bug"); } do
+    { return (_value > 0) ? _value : 0; }
+
+    pragma(inline) short errorCode() const in { assert(_value != 0, "code bug"); } do
+    // TODO: replace -5 with -EIO
+    { return (_value > 0) ? -5 : cast(short)_value; }
+}
+extern (C) WriteResult tryWrite(FileD handle, const(void)* ptr, size_t n)
+{
+    size_t initialSize = n;
+    auto result = write(handle, ptr, n);
+    return (result.val == n) ? WriteResult(0) : WriteResult(result.numval);
+}
+
 struct FileD
 {
     private int _value = -1;
@@ -35,11 +56,22 @@ struct FileD
     mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
+    pragma(inline)
+    final void close() const
+    {
+        .close(this);
+    }
+
     auto print(P)(P printer) const
     {
         import mar.print : printDecimal;
         return printDecimal(printer, _value);
     }
+
+    pragma(inline)
+    WriteResult tryWrite(const(void)* ptr, size_t length) { return .tryWrite(this, ptr, length); }
+    pragma(inline)
+    WriteResult tryWrite(const(void)[] array) { return .tryWrite(this, array.ptr, array.length); }
 
     void write(T...)(T args) const
     {
@@ -71,6 +103,7 @@ auto read(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
     return sys_read(fd, cast(void*)buffer.ptr, buffer.length);
 }
 
+// TODO: rename to file access?
 enum OpenAccess : ubyte
 {
     readOnly  = 0b00, // O_RDONLY
@@ -94,14 +127,15 @@ enum OpenStatusFlags : uint
 }
 struct OpenFlags
 {
-    uint value;
-    mixin WrapperFor!"value";
+    uint _value;
+    mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
     this(OpenAccess access, OpenCreateFlags flags = OpenCreateFlags.none)
     {
-        this.value = cast(uint)flags | cast(uint)access;
+        this._value = cast(uint)flags | cast(uint)access;
     }
+    ref uint val() { return _value; }
 }
 
 pragma(inline) auto open(T)(T pathname, OpenFlags flags) if (!is(pathname : cstring))
@@ -246,15 +280,10 @@ void unreportableError(string Ex, T)(T msg, string file = __FILE__, size_t line 
         version (NoExit)
             static assert(0, "unreportableError cannot be called with BetterC and version=NoExit");
 
-        import mar.linux.process : exit;
-        import mar.io;
+        import mar.process : exit;
+        import mar.stdio;
         // write error to stderr
-        write(stderr, "unreportable error: ");
-        write(stderr, file);
-        // todo: write the line number as well
-        write(stderr, ": ");
-        write(stderr, msg);
-        write(stderr, "\n");
+        stderr.writeln("unreportable error: ", file, ": ", msg);
         exit(1);
     }
     else
