@@ -73,10 +73,8 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
         code ~= "    }";
         code ~= q{
     private this(State state) { this.state = state; }
-    pragma(inline)
-    bool failed() const { return state != State.success; }
-    pragma(inline)
-    bool passed() const { return state == State.success; }
+    bool failed() const { pragma(inline, true); return state != State.success; }
+    bool passed() const { pragma(inline, true); return state == State.success; }
 
     bool reportFail() const
     {
@@ -104,7 +102,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
 };
         code ~= "    auto print(P)(P printer) const\n";
         code ~= "    {\n";
-        code ~= "        final switch (state)\n";
+        code ~= "        switch (state)\n";
         code ~= "        {\n";
         code ~= "        case State.success: return printer.put(\"no error\"); break;\n";
         static foreach (i, errorCase; ErrorCases)
@@ -113,6 +111,11 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
             code ~= "        case State." ~ errorCase.name ~ ": return printer.put(\"" ~
                 errorCase.errorMessageFormat ~ "\"); break;\n";
         }
+        code ~= "        default:\n";
+        code ~= "            // we assert here instead of using final switch\n";
+        code ~= "            // because final switch requires exceptions which don't\n";
+        code ~= "            // work with -betterC\n";
+        code ~= "            assert(0, \"codebug: invalid state\");\n";
         code ~= "        }\n";
         code ~= "    }\n";
         code ~= "}\n";

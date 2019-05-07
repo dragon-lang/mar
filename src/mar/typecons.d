@@ -1,19 +1,20 @@
 module mar.typecons;
 
 /+
-pragma(inline)
 ref T unconst(T)(ref const(T) value)
 {
+    pragma(inline, true);
     return cast(T)value;
 }
-pragma(inline)
 T unconst(T)(const(T) value)
 {
+    pragma(inline, true);
     return cast(T)value;
 }
 +/
-pragma(inline) T unconst(T)(const(T) obj)
+T unconst(T)(const(T) obj)
 {
+    pragma(inline, true);
     return cast(T)obj;
 }
 
@@ -44,7 +45,7 @@ template defaultNullValue(T)
 struct Nullable(T, T nullValue = defaultNullValue!T)
 {
     private T value = nullValue;
-    pragma(inline) T unsafeGetValue() inout { return cast(T)value; }
+    T unsafeGetValue() inout { pragma(inline, true); return cast(T)value; }
     T get() inout in { assert(value !is nullValue); } do { return cast(T)value; }
     bool isNull() const { return value is nullValue; }
     void opAssign(T value)
@@ -104,17 +105,17 @@ struct ValueOrErrorCode(Value, ErrorCode)
         this._value = value;
     }
 
-    pragma(inline) bool failed() const { return _errorCode != ErrorCode.init; }
-    pragma(inline) bool passed() const { return _errorCode == ErrorCode.init; }
-    pragma(inline) ErrorCode errorCode() const { return cast(ErrorCode)_errorCode; }
+    bool failed() const { pragma(inline, true); return _errorCode != ErrorCode.init; }
+    bool passed() const { pragma(inline, true); return _errorCode == ErrorCode.init; }
+    ErrorCode errorCode() const { pragma(inline, true); return cast(ErrorCode)_errorCode; }
 
-    pragma(inline) void set(Value value) { this._value = value; }
-    pragma(inline) Value val() const { return cast(Value)_value; }
+    void set(Value value) { pragma(inline, true); this._value = value; }
+    Value val() const { pragma(inline, true); return cast(Value)_value; }
 }
 
-pragma(inline)
 auto enforce(T, U...)(T value, U errorMsgArgs)
 {
+    pragma(inline, true);
     if (value.failed)
     {
         import mar.process : exit;

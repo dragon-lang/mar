@@ -177,12 +177,12 @@ enum Syscall : size_t
 struct SyscallValueResult(T)
 {
     private ptrdiff_t _value;
-    pragma(inline) ptrdiff_t numval() const { return _value; }
-    pragma(inline) bool failed() const { return _value < 0 && _value >= -4095; }
-    pragma(inline) bool passed() const { return _value >= 0 || _value < -4095; }
+    ptrdiff_t numval() const { pragma(inline, true); return _value; }
+    bool failed() const { pragma(inline, true); return _value < 0 && _value >= -4095; }
+    bool passed() const { pragma(inline, true); return _value >= 0 || _value < -4095; }
 
-    pragma(inline) void set(const T value) { this._value = cast(ptrdiff_t)value; }
-    pragma(inline) T val() const { return cast(T)_value; }
+    void set(const T value) { pragma(inline, true); this._value = cast(ptrdiff_t)value; }
+    T val() const { pragma(inline, true); return cast(T)_value; }
     auto print(P)(P printer) const
     {
         import mar.print : printDecimal;
@@ -193,9 +193,9 @@ struct SyscallValueResult(T)
 struct SyscallExpectZero
 {
     private ptrdiff_t _value;
-    pragma(inline) ptrdiff_t numval() const { return _value; }
-    pragma(inline) bool failed() const { return _value != 0; }
-    pragma(inline) auto passed() const { return _value == 0; }
+    ptrdiff_t numval() const { pragma(inline, true); return _value; }
+    bool failed() const { pragma(inline, true); return _value != 0; }
+    auto passed() const { pragma(inline, true); return _value == 0; }
     auto print(P)(P printer) const
     {
         import mar.print : printDecimal;

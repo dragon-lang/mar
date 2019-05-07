@@ -43,10 +43,8 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         // defined so you can access it externally
         enum SentinelValue = sentinelValue;
 
-        pragma(inline)
-        static auto nullValue() { return typeof(this)(null); }
-        pragma(inline)
-        bool isNull() const { return _ptr is null; }
+        static auto nullValue() { pragma(inline, true); return typeof(this)(null); }
+        bool isNull() const { pragma(inline, true); return _ptr is null; }
 
         /**
         Interpret a raw pointer `ptr` as a `SentinelPtr` without checking that
@@ -56,9 +54,9 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         Returns:
             the given `ptr` interpreted as a `SentinelPtr`
         */
-        pragma(inline)
         static auto assume(SpecificT* ptr) pure
         {
+            pragma(inline, true);
             return typeof(this)(ptr);
         }
 
@@ -73,20 +71,20 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         mixin WrapOpSlice;
         mixin WrapOpUnary;
 
-        pragma(inline)
         ConstPtr asConst() inout
         {
-             return ConstPtr(cast(const(T)*)_ptr);
+            pragma(inline, true);
+            return ConstPtr(cast(const(T)*)_ptr);
         }
-        pragma(inline)
         ConstPtr asImmutable() inout
         {
-             return ImmutablePtr(cast(immutable(T)*)_ptr);
+            pragma(inline, true);
+            return ImmutablePtr(cast(immutable(T)*)_ptr);
         }
 
-        pragma(inline)
         auto withConstPtr() inout
         {
+            pragma(inline, true);
             static if (is(typeof(_ptr.asConst)))
             {
                 return SentinelPtr!(typeof(_ptr.asConst()), typeof(_ptr.asConst()).init/*(sentinelValue)*/)(
@@ -104,40 +102,36 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         Returns:
             the ptr as a SentinelArray
         */
-        pragma(inline)
         SentinelArray walkToArray() inout
         {
+            pragma(inline, true);
             return SentinelArray((cast(SpecificT*)_ptr)[0 .. asConst.walkLength()]);
         }
 
-        pragma(inline)
-        SpecificT* raw() const { return cast(SpecificT*)_ptr; }
+        SpecificT* raw() const { pragma(inline, true); return cast(SpecificT*)_ptr; }
 
-        pragma(inline)
         typeof(this) rangeCopy() const
         {
+            pragma(inline, true);
             return typeof(return)(cast(SpecificT*)_ptr);
         }
 
         /**
         Return the current value pointed to by `ptr`.
         */
-        pragma(inline)
-        auto front() inout { return *_ptr; }
+        auto front() inout { pragma(inline, true); return *_ptr; }
 
         /**
         Move ptr to the next value.
         */
-        pragma(inline)
-        void popFront() { _ptr++; }
+        void popFront() { pragma(inline, true); _ptr++; }
 
         static if (is(T == char))
         {
             static if(sentinelValue == '\0')
             {
                 import mar.c : cstring;
-                pragma(inline)
-                auto asCString() const { return cast(typeof(this))this; }
+                auto asCString() const { pragma(inline, true); return cast(typeof(this))this; }
             }
             auto print(P)(P printer) const
             {
@@ -200,8 +194,7 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         /**
         Returns true if `ptr` is pointing at the sentinel value.
         */
-        pragma(inline)
-        @property bool empty() const { return *raw == sentinelValue; }
+        @property bool empty() const { pragma(inline, true); return *raw == sentinelValue; }
 
         /**
         Walks the array to determine its length.
@@ -238,10 +231,8 @@ private template SentinelTemplate(T, immutable T sentinelValue)
     }
 
     private enum CommonArrayMembers = q{
-        pragma(inline)
-        static auto nullValue() { return typeof(this)(null); }
-        pragma(inline)
-        bool isNull() const { return array.ptr == null; }
+        static auto nullValue() { pragma(inline, true); return typeof(this)(null); }
+        bool isNull() const { pragma(inline, true); return array.ptr == null; }
 
         /**
         Interpret `array` as a `SentinalArray` without checking that
@@ -251,9 +242,9 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         Returns:
             the given `array` interpreted as a `SentinelArray`
         */
-        pragma(inline)
         static auto assume(SpecificT[] array) pure
         {
+            pragma(inline, true);
             return typeof(this)(array);
         }
 
@@ -284,11 +275,11 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         mixin WrapOpSlice;
         mixin WrapOpUnary;
 
-        pragma(inline) SentinelPtr ptr() const { return SentinelPtr(cast(SpecificT*)array.ptr); }
-        pragma(inline) auto opDollar() const { return array.length; }
+        SentinelPtr ptr() const { pragma(inline, true); return SentinelPtr(cast(SpecificT*)array.ptr); }
+        auto opDollar() const { pragma(inline, true); return array.length; }
 
-        pragma(inline) ConstArray     asConst()     inout { return ConstArray(cast(const(T)[])array); }
-        pragma(inline) ImmutableArray asImmutable() inout { return ImmutableArray(cast(immutable(T)[])array); }
+        ConstArray     asConst()     inout { pragma(inline, true); return ConstArray(cast(const(T)[])array); }
+        ImmutableArray asImmutable() inout { pragma(inline, true); return ImmutableArray(cast(immutable(T)[])array); }
 
         /**
         A no-op that just returns the array as is.  This is to be useful for templates that can accept
@@ -299,9 +290,9 @@ private template SentinelTemplate(T, immutable T sentinelValue)
         Returns:
             this
         */
-        pragma(inline) auto asSentinelArray() @system inout { return this; }
+        auto asSentinelArray() @system inout { pragma(inline, true); return this; }
         /// ditto
-        pragma(inline) auto asSentinelArrayUnchecked() @system inout { return this; }
+        auto asSentinelArrayUnchecked() @system inout { pragma(inline, true); return this; }
 
         static if (is(T == char) && sentinelValue == '\0')
         {
@@ -566,31 +557,35 @@ A template that coerces a string literal to a SentinelString.
 Note that this template becomes unnecessary if the type of string literal
 is changed to SentinelString.
 */
-pragma(inline) @property SentinelString lit(string s)() @trusted
+@property SentinelString lit(string s)() @trusted
 {
-   SentinelString ss = void;
-   ss.array = s;
-   return ss;
+    pragma(inline, true);
+    SentinelString ss = void;
+    ss.array = s;
+    return ss;
 }
 /// ditto
-pragma(inline) @property SentinelWstring lit(wstring s)() @trusted
+@property SentinelWstring lit(wstring s)() @trusted
 {
-   SentinelWstring ss = void;
-   ss.array = s;
-   return ss;
+    pragma(inline, true);
+    SentinelWstring ss = void;
+    ss.array = s;
+    return ss;
 }
 /// ditto
-pragma(inline) @property SentinelDstring lit(dstring s)() @trusted
+@property SentinelDstring lit(dstring s)() @trusted
 {
-   SentinelDstring ss = void;
-   ss.array = s;
-   return ss;
+    pragma(inline, true);
+    SentinelDstring ss = void;
+    ss.array = s;
+    return ss;
 }
-pragma(inline) @property SentinelPtr!(immutable(char)) litPtr(string s)() @trusted
+@property SentinelPtr!(immutable(char)) litPtr(string s)() @trusted
 {
-   SentinelPtr!(immutable(char)) p = void;
-   p._ptr = s.ptr;
-   return p;
+    pragma(inline, true);
+    SentinelPtr!(immutable(char)) p = void;
+    p._ptr = s.ptr;
+    return p;
 }
 
 unittest

@@ -17,9 +17,9 @@ version (NoExit) {} else
     }
     else version (Windows)
     {
-        pragma(inline)
         void exit(uint exitCode)
         {
+            pragma(inline, true);
             import mar.windows.kernel32 : ExitProcess;
             ExitProcess(exitCode);
         }
@@ -105,9 +105,9 @@ struct ProcBuilder
     }
     else version (Posix)
     {
-        pragma(inline)
         auto tryPut(SentinelArray!(const(char)) arg)
         {
+            pragma(inline, true);
             return tryPut(arg.ptr);
         }
     }

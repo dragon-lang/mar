@@ -7,9 +7,9 @@ struct MallocArrayBuilderPolicy(size_t InitialItemCount)
     static import mar.mem;
 
     /** Returns: null if out of memory */
-    pragma(inline)
     static T[] increaseBuffer(T)(T[] buffer, size_t minNewLength, size_t preserveLength)
     {
+        pragma(inline, true);
         import mar.conv : staticCast;
         auto result = increaseBuffer(buffer, minNewLength, preserveLength, T.sizeof);
         return staticCast!(T[])(result);
@@ -42,9 +42,9 @@ struct MallocArrayBuilderPolicy(size_t InitialItemCount)
         }
         return newBuffer[0 .. newLength];
     }
-    pragma(inline)
     static void free(T)(T[] buffer)
     {
+        pragma(inline, true);
         mar.mem.free(buffer.ptr);
     }
 }
@@ -54,8 +54,7 @@ struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
     private T[] buffer;
     private size_t count;
 
-    pragma(inline)
-    T[] data() const { return (cast(T[])buffer)[0 .. count]; }
+    T[] data() const { pragma(inline, true); return (cast(T[])buffer)[0 .. count]; }
 
     MemoryResult tryPut(T item)
     {

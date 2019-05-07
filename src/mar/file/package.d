@@ -76,9 +76,9 @@ struct OpenFileOpt
     }
 
     /// create a new file if it doesn't exist, otherwise, fail
-    pragma(inline)
     auto ref createOnly()
     {
+        pragma(inline, true);
         version (linux)
             this.flags.val |= OpenCreateFlags.creat | OpenCreateFlags.excl;
         else version (Windows)
@@ -86,9 +86,9 @@ struct OpenFileOpt
         return this;
     }
     // create a new file, truncate it if it already exists
-    pragma(inline)
     auto ref createOrTruncate()
     {
+        pragma(inline, true);
         version (linux)
             this.flags.val |= OpenCreateFlags.creat | OpenCreateFlags.trunc;
         else version (Windows)
@@ -96,9 +96,9 @@ struct OpenFileOpt
         return this;
     }
     // create a new file or open the existing file
-    pragma(inline)
     auto ref createOrOpen()
     {
+        pragma(inline, true);
         version (linux)
             this.flags.val |= OpenCreateFlags.creat;
         else version (Windows)
@@ -106,31 +106,31 @@ struct OpenFileOpt
         return this;
     }
 
-    pragma(inline)
     auto ref shareDelete()
     {
+        pragma(inline, true);
         version (Windows)
             shareMode |= FileShareMode.delete_;
         return this;
     }
-    pragma(inline)
     auto ref shareRead()
     {
+        pragma(inline, true);
         version (Windows)
             shareMode |= FileShareMode.read;
         return this;
     }
-    pragma(inline)
     auto ref shareWrite()
     {
+        pragma(inline, true);
         version (Windows)
             shareMode |= FileShareMode.write;
         return this;
     }
 
-    pragma(inline)
     auto ref mode(ModeFlags modeFlags)
     {
+        pragma(inline, true);
         version (linux)
             this._mode = modeFlags;
         // ignore on windows

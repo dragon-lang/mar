@@ -15,9 +15,9 @@ The function will try each of the following in order to print the argument
 6. is `isArithmetic!(typeof(arg))`, it will call `printDecimal(printer, arg)`
 
 */
-pragma(inline)
 auto printArg(Printer, T)(Printer printer, T arg)
 {
+    pragma(inline, true);
     import mar.string : isStringLike;
 
     //static if (is(typeof(arg.print(printer))))
@@ -68,23 +68,33 @@ template maxDecimalDigits(T)
 /**
 NOTE: this is a "normalization" function to prevent template bloat
 */
-pragma(inline)
 auto printDecimal(T, Printer)(Printer printer, T value)
 {
+    pragma(inline, true);
     auto buffer = printer.getTempBuffer!(
         1 + // 1 for the '-' character
         maxDecimalDigits!T);
     scope (exit) printer.commitBuffer(buffer.commitValue);
 
-    // TODO: support types larget than size_t
     static if (T.sizeof > size_t.sizeof)
     {
-        static assert(0, "printing numbers with this bit width is not implemented");
+        static if (T.sizeof > long.sizeof)
+            static assert(0, "printing numbers with this bit width is not implemented");
+        else
+        {
+            alias stype = long;
+            alias utype = ulong;
+        }
+    }
+    else
+    {
+        alias stype = ptrdiff_t;
+        alias utype = size_t;
     }
 
     static if (T.min >= 0)
     {
-        buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)value);
+        buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)value);
     }
     else
     {
@@ -92,11 +102,11 @@ auto printDecimal(T, Printer)(Printer printer, T value)
         {
             buffer.ptr[0] = '-';
             buffer.ptr++;
-            buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)(-cast(ptrdiff_t)value));
+            buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)(-cast(stype)value));
         }
         else
         {
-            buffer.ptr = printSizetDecimal(buffer.ptr, cast(size_t)value);
+            buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)value);
         }
     }
     return Printer.success;
@@ -132,7 +142,7 @@ unittest
     }
 }
 
-char* printSizetDecimal(char* buffer, size_t value)
+private char* printDecimalTemplate(T)(char* buffer, T value)
 {
     import mar.array : areverse;
 
@@ -169,18 +179,27 @@ auto printHex(T, Printer)(Printer printer, T value)
 
     static if (T.sizeof > size_t.sizeof)
     {
-        static assert(0, "printing hex numbers larger than size_t not implemented");
+        static if (T.sizeof > ulong.sizeof)
+            static assert(0, "printing numbers with this bit width is not implemented");
+        else
+        {
+            alias utype = ulong;
+        }
+    }
+    else
+    {
+        alias utype = size_t;
     }
 
     static if (T.min < 0)
         static assert(0, "printing signed hex values not implemented");
     else
     {
-        buffer.ptr = printSizetHex(buffer.ptr, cast(size_t)value);
+        buffer.ptr = printHexTemplate!utype(buffer.ptr, cast(utype)value);
     }
     return Printer.success;
 }
-char* printSizetHex(char* buffer, size_t value)
+private char* printHexTemplate(T)(char* buffer, T value)
 {
     import mar.array : areverse;
 
@@ -204,7 +223,7 @@ char* printSizetHex(char* buffer, size_t value)
 //       of returning the error
 struct CannotFail
 {
-    pragma(inline) static bool failed() { return false; }
+    static bool failed() { pragma(inline, true); return false; }
 }
 
 // Every printer should be able to return a buffer
@@ -221,8 +240,8 @@ struct BufferedFileReturnErrorPrinterPolicy
 
     mixin ExpectMixin!("PutResult", void,
         ErrorCase!("writeFailed", "write failed, returned %", ptrdiff_t));
-    pragma(inline)
-    static PutResult success() { return PutResult.success; }
+
+    static PutResult success() { pragma(inline, true); return PutResult.success; }
     static PutResult writeFailed(FileD dest, size_t writeSize, ptrdiff_t errno)
     {
         // TODO: do something with dest/writeSize
@@ -260,7 +279,7 @@ struct DefaultPrinterBuffer
     {
         return this;
     }
-    pragma(inline) void putc(char c) { ptr[0] = c; ptr++; }
+    void putc(char c) { pragma(inline, true); ptr[0] = c; ptr++; }
 }
 
 struct BufferedFilePrinter(Policy)
@@ -339,9 +358,9 @@ struct BufferedFilePrinter(Policy)
     WARNING: you cannot call other printer functions while
              using this buffer, like `flush`, `put`.
     */
-    pragma(inline)
     auto getTempBuffer(size_t size)()
     {
+        pragma(inline, true);
         static assert(size <= Policy.bufferLength);
         auto left = Policy.bufferLength - bufferedLength;
         if (left < size)
@@ -453,8 +472,8 @@ struct StringPrinter
     //
     alias PutResult = CannotFail;
     static PutResult success() { return CannotFail(); }
-    pragma(inline)
-    PutResult flush() { return success; }
+
+    PutResult flush() { pragma(inline, true); return success; }
     PutResult put(const(char)[] str)
     {
         enforceCapacity(str.length);
@@ -469,9 +488,9 @@ struct StringPrinter
         return success;
     }
 
-    pragma(inline)
     auto getTempBuffer(size_t size)()
     {
+        pragma(inline, true);
         enforceCapacity(size);
         return DefaultPrinterBuffer(buffer.ptr +  + bufferedLength);
     }
@@ -495,14 +514,13 @@ struct CalculateSizePrinter
     //
     alias PutResult = CannotFail;
     static PutResult success() { return CannotFail(); }
-    pragma(inline)
-    PutResult flush() { return CannotFail(); }
+    PutResult flush() { pragma(inline, true); return CannotFail(); }
     PutResult put(const(char)[] str) { size += str.length; return CannotFail(); }
     PutResult putc(const char c) { size++; return CannotFail(); }
     /+
-    pragma(inline)
     auto getTempBuffer(size_t size)()
     {
+        pragma(inline, true);
         enforceCapacity(size);
         return DefaultPrinterBuffer(buffer.ptr +  + bufferedLength);
     }

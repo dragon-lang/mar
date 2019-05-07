@@ -84,8 +84,8 @@ uint IOCSIZE_SHIFT    (_IOC_SIZESHIFT)
 
 alias ioctl = sys_ioctl;
 
-pragma(inline)
 extern (C) auto ioctl(T)(FileD fd, size_t request, T arg) if (!is(arg : void*))
 {
+    pragma(inline, true);
     return sys_ioctl(fd, request, cast(void*)arg);
 }

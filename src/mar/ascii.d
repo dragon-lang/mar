@@ -19,9 +19,9 @@ auto printUnreadable(P)(P printer, char c)
     str[3] = hexTableUpper[c & 0xF];
     return printer.put(str);
 }
-pragma(inline)
 auto printEscape(P)(P printer, char c)
 {
+    pragma(inline, true);
     return isUnreadable(c) ?
         printUnreadable(printer, c) :
         printer.putc(c);
@@ -61,9 +61,9 @@ auto formatEscape(char c)
     }
     return Print(c);
 }
-pragma(inline)
 auto formatEscape(const(char)[] str)
 {
+    pragma(inline, true);
     return formatEscape(str.ptr, str.ptr + str.length);
 }
 auto formatEscape(const(char)* ptr, const char* limit)

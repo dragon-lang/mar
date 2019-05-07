@@ -21,14 +21,16 @@ alias umount2  = sys_umount2;
 alias getdents = sys_getdents;
 alias umask    = sys_umask;
 
-pragma(inline) auto chdir(T)(T path) if (!is(path : cstring))
+auto chdir(T)(T path) if (!is(path : cstring))
 {
+    pragma(inline, true);
     mixin tempCString!("pathCStr", "path");
     return sys_chdir(pathCStr.str);
 }
 
-pragma(inline) auto readlink(cstring path, char[] buffer)
+auto readlink(cstring path, char[] buffer)
 {
+    pragma(inline, true);
     return readlink(path, buffer.ptr, buffer.length);
 }
 

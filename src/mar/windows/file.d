@@ -1,5 +1,6 @@
 module mar.windows.file;
 
+import mar.passfail;
 import mar.wrap;
 import mar.c : cstring;
 
@@ -42,13 +43,13 @@ struct WriteResult
 {
     private uint _errorCode;
     private uint _writtenOnFailure;
-    pragma(inline) bool failed() const { return _errorCode != 0; }
-    pragma(inline) bool passed() const { return _errorCode == 0; }
+    bool failed() const { pragma(inline, true); return _errorCode != 0; }
+    bool passed() const { pragma(inline, true); return _errorCode == 0; }
 
-    pragma(inline) uint onFailWritten() const
+    uint onFailWritten() const
     in { assert(_errorCode != 0, "code bug"); } do
-    { return _writtenOnFailure; }
-    pragma(inline) uint errorCode() const { return _errorCode; }
+    { pragma(inline, true); return _writtenOnFailure; }
+    uint errorCode() const { pragma(inline, true); return _errorCode; }
 }
 
 extern (C) WriteResult tryWrite(Handle handle, const(void)* ptr, size_t n)
@@ -74,20 +75,20 @@ struct FileD
         this._value = value;
     }
     bool isValid() nothrow @nogc const { return _value != -1; }
-    pragma(inline) ptrdiff_t numval() const { return _value; }
+    ptrdiff_t numval() const { pragma(inline, true); return _value; }
     void setInvalid() { this._value = -1; }
     static FileD invalidValue() { return FileD(-1); }
     mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
-    pragma(inline)
     final void close() const
     {
+        pragma(inline, true);
         import mar.windows.kernel32 : CloseHandle;
         CloseHandle(Handle(_value));
     }
 
-    pragma(inline) Handle asHandle() const { return Handle(_value); }
+    Handle asHandle() const { pragma(inline, true); return Handle(_value); }
 
     auto print(P)(P printer) const
     {
@@ -95,10 +96,8 @@ struct FileD
         return printDecimal(printer, _value);
     }
 
-    pragma(inline)
-    WriteResult tryWrite(const(void)* ptr, size_t n) { return .tryWrite(asHandle, ptr, n); }
-    pragma(inline)
-    WriteResult tryWrite(const(void)[] array) { return .tryWrite(asHandle, array.ptr, array.length); }
+    WriteResult tryWrite(const(void)* ptr, size_t n) { pragma(inline, true); return .tryWrite(asHandle, ptr, n); }
+    WriteResult tryWrite(const(void)[] array) { pragma(inline, true); return .tryWrite(asHandle, array.ptr, array.length); }
 
     void write(T...)(T args) const
     {
@@ -111,10 +110,20 @@ struct FileD
         printer.flush();
     }
 
-    pragma(inline)
     void writeln(T...)(T args) const
     {
+        pragma(inline, true);
         write(args, '\n');
+    }
+
+    passfail tryFlush()
+    {
+        pragma(inline, true);
+        import mar.windows.kernel32 : FlushFileBuffers;
+
+        if (FlushFileBuffers(asHandle).failed)
+            return passfail.fail;
+        return passfail.pass;
     }
 }
 

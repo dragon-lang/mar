@@ -19,9 +19,9 @@ template isIndexable(T)
     enum isIndexable = is(typeof(T.init[0]));
 }
 
-pragma(inline)
 bool contains(T, U)(T arr, U elem)
 {
+    pragma(inline, true);
     return indexOf!(T,U)(arr, elem) != arr.length;
 }
 auto indexOrLength(T, U)(T arr, U elem)
@@ -79,27 +79,37 @@ auto find(T, U)(inout(T)* ptr, const(T)* limit, U elem)
 /**
 acopy - Array Copy
 */
-pragma(inline)
 void acopy(T,U)(T dst, U src) @trusted
 if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 in { assert(dst.length >= src.length, "copyFrom source length larger than destination"); } do
 {
+    pragma(inline, true);
     acopyImpl(cast(void*)dst.ptr, cast(void*)src.ptr, src.length * dst[0].sizeof);
 }
 /// ditto
-pragma(inline)
 void acopy(T,U)(T dst, U src) @system
 if (isPointerLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 {
+    pragma(inline, true);
     acopyImpl(cast(void*)dst, cast(void*)src.ptr, src.length * dst[0].sizeof);
 }
+void acopy(T,U)(T dst, U src, size_t size) @system
+if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof && dst[0].sizeof <= 1)
+{
+    pragma(inline, true);
+    acopyImpl(cast(void*)dst, cast(void*)src, size);
+}
+/*
 /// ditto
-pragma(inline)
 void acopy(T,U)(T dst, U src, size_t size) @system
 if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
 {
+    pragma(inline, true);
+    !!! WHICH ONE?
     acopyImpl(cast(void*)dst, cast(void*)src, size);
+    acopyImpl(cast(void*)dst, cast(void*)src, size * dst[0].sizeof);
 }
+*/
 
 private void acopyImpl(void* dst, void* src, size_t length)
 {
@@ -125,29 +135,28 @@ private void acopyImpl(void* dst, void* src, size_t length)
     }
 }
 
-
 /**
 amove - Array move, dst and src can overlay
 */
-pragma(inline)
 void amove(T,U)(T dst, U src) @trusted
 if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 in { assert(dst.length >= src.length, "moveFrom source length larger than destination"); } do
 {
+    pragma(inline, true);
     amoveImpl(cast(void*)dst.ptr, cast(void*)src.ptr, src.length * dst[0].sizeof);
 }
 /// ditto
-pragma(inline)
 void amove(T,U)(T dst, U src) @system
 if (isPointerLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 {
+    pragma(inline, true);
     amoveImpl(cast(void*)dst, cast(void*)src.ptr, src.length * dst[0].sizeof);
 }
 /// ditto
-pragma(inline)
 void amove(T,U)(T dst, U src, size_t size) @system
 if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
 {
+    pragma(inline, true);
     amoveImpl(cast(void*)dst, cast(void*)src, size);
 }
 // dst and src can overlap
@@ -210,10 +219,10 @@ private size_t diffIndex(const(void)* lhs, const(void)* rhs, size_t limit)
 
 // TODO: need to handle SentinelPtr and SentinelArray
 //       correctly where it matches the array but is not ended
-pragma(inline)
 bool aequals(T,U)(T lhs, U rhs)
 if (isIndexable!T && isIndexable!U)
 {
+    pragma(inline, true);
     static if (isArrayLike!T)
     {
         static if (isArrayLike!U)
@@ -260,9 +269,10 @@ bool endsWith(T,U)(T lhs, U rhs)
 
 
 
-pragma(inline) void setBytes(T,U)(T dst, U value)
+void setBytes(T,U)(T dst, U value)
 if (isArrayLike!T && T.init[0].sizeof == 1 && value.sizeof == 1)
 {
+    pragma(inline, true);
     version (NoStdc)
     {
         static assert(0, "not impl");
@@ -323,25 +333,29 @@ template LimitArray(T)
     else
     {
         enum CommonMixin = q{
-            pragma(inline) @property auto asArray()
+            @property auto asArray()
             {
+                pragma(inline, true);
                 return this.ptr[0 .. limit - ptr];
             }
-            pragma(inline) auto slice(size_t offset)
+            auto slice(size_t offset)
             {
+                pragma(inline, true);
                 auto newPtr = ptr + offset;
                 assert(newPtr <= limit, "slice offset range violation");
                 return typeof(this)(newPtr, limit);
             }
-            pragma(inline) auto slice(size_t offset, size_t newLimit)
+            auto slice(size_t offset, size_t newLimit)
                 in { assert(newLimit >= offset, "slice offset range violation"); } do
             {
+                pragma(inline, true);
                 auto newLimitPtr = ptr + newLimit;
                 assert(newLimitPtr <= limit, "slice limit range violation");
                 return typeof(this)(ptr + offset, ptr + newLimit);
             }
-            pragma(inline) auto ptrSlice(typeof(this.ptr) ptr)
+            auto ptrSlice(typeof(this.ptr) ptr)
             {
+                pragma(inline, true);
                 auto copy = this;
                 copy.ptr = ptr;
                 return copy;
@@ -399,9 +413,9 @@ template LimitArray(T)
     }
 }
 
-pragma(inline)
 @property auto asLimitArray(T)(T[] array)
 {
+    pragma(inline, true);
     static if( is(T == immutable) )
     {
         return LimitArray!T.immutable_(array.ptr, array.ptr + array.length);
@@ -431,41 +445,47 @@ struct LengthArray(T, SizeType)
     void nullify() { this.ptr = null; this.length = 0; }
     bool isNull() const { return ptr is null; }
 
-    pragma(inline) @property auto ref last() const
-        in { assert(length > 0); } do { return ptr[length - 1]; }
+    @property auto ref last() const
+        in { assert(length > 0); } do { pragma(inline, true); return ptr[length - 1]; }
 
-    pragma(inline) auto ref opIndex(SizeType index) inout
+    auto ref opIndex(SizeType index) inout
         in { assert(index < length, format("range violation %s >= %s", index, length)); } do
     {
+        pragma(inline, true);
         return ptr[index];
     }
     static if (size_t.sizeof != SizeType.sizeof)
     {
-        pragma(inline) auto ref opIndex(size_t index) inout
+        auto ref opIndex(size_t index) inout
             in { assert(index < length, format("range violation %s >= %s", index, length)); } do
         {
+            pragma(inline, true);
             return ptr[index];
         }
     }
-    pragma(inline) SizeType opDollar() const
+    SizeType opDollar() const
     {
+        pragma(inline, true);
         return length;
     }
     /*
-    pragma(inline) auto ref opSlice(SizeType start, SizeType limit) inout
+    auto ref opSlice(SizeType start, SizeType limit) inout
         in { assert(limit >= start, "slice range violation"); } do
     {
+        pragma(inline, true);
         return inout LengthArray!(T,SizeType)(ptr + start, cast(SizeType)(limit - start));
     }
     */
-    pragma(inline) auto ref opSlice(SizeType start, SizeType limit)
+    auto ref opSlice(SizeType start, SizeType limit)
         in { assert(limit >= start, "slice range violation"); } do
     {
+        pragma(inline, true);
         return LengthArray!(T,SizeType)(ptr + start, cast(SizeType)(limit - start));
     }
 
-    pragma(inline) int opApply(scope int delegate(ref T element) dg) const
+    int opApply(scope int delegate(ref T element) dg) const
     {
+        pragma(inline, true);
         int result = 0;
         for (SizeType i = 0; i < length; i++)
         {
@@ -475,8 +495,9 @@ struct LengthArray(T, SizeType)
         }
         return result;
     }
-    pragma(inline) int opApply(scope int delegate(SizeType index, ref T element) dg) const
+    int opApply(scope int delegate(SizeType index, ref T element) dg) const
     {
+        pragma(inline, true);
         int result = 0;
         for (SizeType i = 0; i < length; i++)
         {
@@ -500,7 +521,7 @@ struct LengthArray(T, SizeType)
     }
     */
 }
-pragma(inline) LengthArray!(T, LengthType) asLengthArray(LengthType, T)(T[] array)
+LengthArray!(T, LengthType) asLengthArray(LengthType, T)(T[] array)
 in {
     static if (LengthType.sizeof < array.length.sizeof)
     {
@@ -509,11 +530,13 @@ in {
     }
 } do
 {
+    pragma(inline, true);
     return LengthArray!(T, LengthType)(array.ptr, cast(LengthType)array.length);
 }
 
-pragma(inline) LengthArray!(T, LengthType) asLengthArray(LengthType, T)(T* ptr, LengthType length)
+LengthArray!(T, LengthType) asLengthArray(LengthType, T)(T* ptr, LengthType length)
 {
+    pragma(inline, true);
     return LengthArray!(T, LengthType)(ptr, length);
 }
 

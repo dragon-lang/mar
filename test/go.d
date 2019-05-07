@@ -139,7 +139,7 @@ else version (Windows)
 {
     ProcID run(SentinelPtr!cstring argv, SentinelPtr!cstring envp)
     {
-        assert(0, "not impl");
+        assert(0, "run not implemented on Windows");
     }
     void waitEnforceSuccess(ProcID pid)
     {

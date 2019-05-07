@@ -102,9 +102,9 @@ struct DefaultFileLineReaderHooks
     static struct Reader
     {
         mar.file.FileD file;
-        pragma(inline)
         auto read(char[] buffer)
         {
+            pragma(inline, true);
             return mar.file.read(file, buffer).numval;
         }
     }

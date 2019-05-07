@@ -24,9 +24,9 @@ struct EndianOf(T, Flag!"flip" flip)
 
     T getRawValue() const { return value; }
 
-    pragma(inline)
     T toHostEndian() const
     {
+        pragma(inline, true);
         static if (flip)
             return cast(T)swapEndian(value);
         else
@@ -42,17 +42,17 @@ struct EndianOf(T, Flag!"flip" flip)
     //       instead of "value" though.
 }
 
-pragma(inline)
 BigEndianOf!T toBigEndian(T)(T value) pure nothrow @nogc
 {
+    pragma(inline, true);
     version (BigEndian)
         return BigEndianOf!T(value);
     else
         return BigEndianOf!T(swapEndian(value));
 }
-pragma(inline)
 LittleEndianOf!T toLittleEndian(T)(T value) pure nothrow @nogc
 {
+    pragma(inline, true);
     version (LittleEndian)
         return LittleEndianOf!T(value);
     else

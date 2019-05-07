@@ -5,9 +5,9 @@ import mar.flag;
 import mar.traits : isArithmetic;
 import mar.typecons : Nullable, nullable;
 
-pragma(inline)
 auto staticCast(T, U)(auto ref U value)
 {
+    pragma(inline, true);
     return *cast(T*)&value;
 }
 

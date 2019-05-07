@@ -37,14 +37,14 @@ enum ModeTypeDir  = ModeFlags.isDir;
 #define S_ISSOCK(m)    (((m) & S_IFMT) == S_IFSOCK)
 */
 
-pragma(inline)
 bool isLink(const mode_t mode)
 {
+    pragma(inline, true);
     return (mode & ModeTypeMask) == ModeTypeLink;
 }
-pragma(inline)
 bool isDir(const mode_t mode)
 {
+    pragma(inline, true);
     return (mode & ModeTypeMask) == ModeTypeDir;
 }
 

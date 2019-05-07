@@ -14,7 +14,7 @@ struct passfail
     @disable this();
     private this(bool _passed) pure nothrow @nogc { this._passed = _passed; }
     /*
-    pragma(inline) @property bool asBool() { return _passed; }
+    @property bool asBool() { pragma(inline, true); return _passed; }
     alias asBool this;
     */
     auto print(P)(P printer) { return printer.put(_passed ? "pass" : "fail"); }

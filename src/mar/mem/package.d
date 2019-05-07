@@ -1,5 +1,28 @@
 module mar.mem;
 
+void zero(void* dst, size_t length)
+{
+    version (NoStdc)
+    {
+        size_t* dstPtr = cast(size_t*)dst;
+        for ( ;length >= size_t.sizeof; dstPtr++, length -= size_t.sizeof)
+        {
+            dstPtr[0] = 0;
+        }
+        ubyte* dstPtr2 = cast(ubyte*)dstPtr;
+        for ( ;length > 0; dstPtr2++, length--)
+        {
+            dstPtr2[0] = 0;
+        }
+    }
+    else
+    {
+        pragma(inline, true);
+        import core.stdc.string : memset;
+        memset(dst, 0, length);
+    }
+}
+
 version (NoStdc)
 {
     version (linux)
@@ -54,22 +77,22 @@ else
     }
 }
 
-pragma(inline)
 auto reallocOrSave(T)(T* array, size_t newLength, size_t preserveLength)
 {
+    pragma(inline, true);
     return cast(T*)reallocOrSaveImpl(array.ptr, newLength * T.sizeof, preserveLength * T.sizeof);
 }
-pragma(inline)
 auto reallocOrSaveArray(T)(T* arrayPtr, size_t newLength, size_t preserveLength)
 {
+    pragma(inline, true);
     auto result = reallocOrSaveImpl(arrayPtr, newLength * T.sizeof, preserveLength * T.sizeof);
     if (result is null)
         return null;
     return (cast(T*)result)[0 .. newLength];
 }
-pragma(inline)
 auto reallocOrSave(T)(T[] array, size_t newLength, size_t preserveLength)
 {
+    pragma(inline, true);
     auto result = reallocOrSaveImpl(array.ptr, newLength * T.sizeof, preserveLength * T.sizeof);
     if (result is null)
         return null;

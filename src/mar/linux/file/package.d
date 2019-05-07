@@ -26,15 +26,15 @@ struct WriteResult
 {
     ptrdiff_t _value;
 
-    pragma(inline) bool failed() const { return _value != 0; }
-    pragma(inline) bool passed() const { return _value == 0; }
+    bool failed() const { pragma(inline, true); return _value != 0; }
+    bool passed() const { pragma(inline, true); return _value == 0; }
 
-    pragma(inline) size_t onFailWritten() const in { assert(_value != 0, "code bug"); } do
-    { return (_value > 0) ? _value : 0; }
+    size_t onFailWritten() const in { assert(_value != 0, "code bug"); } do
+    { pragma(inline, true); return (_value > 0) ? _value : 0; }
 
-    pragma(inline) short errorCode() const in { assert(_value != 0, "code bug"); } do
+    short errorCode() const in { assert(_value != 0, "code bug"); } do
     // TODO: replace -5 with -EIO
-    { return (_value > 0) ? -5 : cast(short)_value; }
+    { pragma(inline, true); return (_value > 0) ? -5 : cast(short)_value; }
 }
 extern (C) WriteResult tryWrite(FileD handle, const(void)* ptr, size_t n)
 {
@@ -51,14 +51,14 @@ struct FileD
         this._value = value;
     }
     bool isValid() const { return _value >= 0; }
-    pragma(inline) auto numval() const { return _value; }
+    auto numval() const { pragma(inline, true); return _value; }
     void setInvalid() { this._value = -1; }
     mixin WrapperFor!"_value";
     mixin WrapOpCast;
 
-    pragma(inline)
     final void close() const
     {
+        pragma(inline, true);
         .close(this);
     }
 
@@ -68,10 +68,8 @@ struct FileD
         return printDecimal(printer, _value);
     }
 
-    pragma(inline)
-    WriteResult tryWrite(const(void)* ptr, size_t length) { return .tryWrite(this, ptr, length); }
-    pragma(inline)
-    WriteResult tryWrite(const(void)[] array) { return .tryWrite(this, array.ptr, array.length); }
+    WriteResult tryWrite(const(void)* ptr, size_t length) { pragma(inline, true); return .tryWrite(this, ptr, length); }
+    WriteResult tryWrite(const(void)[] array) { pragma(inline, true); return .tryWrite(this, array.ptr, array.length); }
 
     void write(T...)(T args) const
     {
@@ -84,22 +82,22 @@ struct FileD
         printer.flush();
     }
 
-    pragma(inline)
     void writeln(T...)(T args) const
     {
+        pragma(inline, true);
         write(args, '\n');
     }
 }
 
-pragma(inline)
 auto write(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
 {
+    pragma(inline, true);
     return sys_write(fd, cast(const(void)*)buffer.ptr, buffer.length);
 }
 
-pragma(inline)
 auto read(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
 {
+    pragma(inline, true);
     return sys_read(fd, cast(void*)buffer.ptr, buffer.length);
 }
 
@@ -138,8 +136,9 @@ struct OpenFlags
     ref uint val() { return _value; }
 }
 
-pragma(inline) auto open(T)(T pathname, OpenFlags flags) if (!is(pathname : cstring))
+auto open(T)(T pathname, OpenFlags flags) if (!is(pathname : cstring))
 {
+    pragma(inline, true);
     mixin tempCString!("pathnameCStr", "pathname");
     return sys_open(pathnameCStr, flags);
 }
@@ -184,12 +183,11 @@ struct stat_t {
 
 enum AT_SYMLINK_NOFOLLOW = 0x100; // Do not follow symbolic links
 
-
-//pragma(inline)
 //ValueOrErrorCode!(size_t, SyscallResult) readlinkat(FileD dirFd, cstring pathname, char[] buffer)
-pragma(inline)
+
 auto readlinkat(FileD dirFd, cstring pathname, char[] buffer)
 {
+    pragma(inline, true);
     return sys_readlinkat(dirFd, pathname, buffer.ptr, buffer.length);
     /*
     auto result = syscall(Syscall.readlinkat, dirFd, pathname, buffer.ptr, buffer.length);
@@ -256,9 +254,10 @@ ValueOrErrorCode!(off_t, short) tryGetFileSize(cstring filename)
         typeof(return).error(cast(short)result.numval);
 
 }
-pragma(inline)
+
 auto tryGetFileSize(T)(T filename)
 {
+    pragma(inline, true);
     mixin tempCString!("filenameCStr", "filename");
     return tryGetFileSize(filenameCStr.str);
 }
@@ -304,9 +303,9 @@ mixin template GetFileSizeFuncs()
         //if (result.failed) throw new FileException(filename, "stat failed");
         return result.val;
     }
-    pragma(inline)
     auto getFileSize(T)(T filename)
     {
+        pragma(inline, true);
         mixin tempCString!("filenameCStr", "filename");
         return getFileSize(filenameCStr.str);
     }
