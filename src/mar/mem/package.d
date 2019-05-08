@@ -25,6 +25,60 @@ void zero(void* dst, size_t length)
 
 version (NoStdc)
 {
+    void memcpy(T,U)(T* dst, U* src, size_t length)
+    {
+        pragma(inline, true);
+        memcpy(cast(void*)dst, cast(void*)src, length);
+    }
+    void memcpy(void* dst, void* src, size_t length)
+    {
+        size_t* dstPtr = cast(size_t*)dst;
+        size_t* srcPtr = cast(size_t*)src;
+        for ( ;length >= size_t.sizeof; dstPtr++, srcPtr++, length -= size_t.sizeof)
+        {
+            dstPtr[0] = srcPtr[0];
+        }
+        ubyte* dstPtr2 = cast(ubyte*)dstPtr;
+        ubyte* srcPtr2 = cast(ubyte*)srcPtr;
+        for ( ;length > 0; dstPtr2++, srcPtr2++, length--)
+        {
+            dstPtr2[0] = srcPtr2[0];
+        }
+    }
+    void memmove(T,U)(T* dst, U* src, size_t length)
+    {
+        pragma(inline, true);
+        memmove(cast(void*)dst, cast(void*)src, length);
+    }
+    void memmove(void* dst, void* src, size_t length)
+    {
+        // this implementation is simple but also not the fastest it could be
+        if (dst < src)
+        {
+            foreach (i; 0 .. length)
+            {
+                (cast(ubyte*)dst)[i] = (cast(ubyte*)src)[i];
+            }
+        }
+        else if (dst > src)
+        {
+            foreach_reverse (i; 0 .. length)
+            {
+                (cast(ubyte*)dst)[i] = (cast(ubyte*)src)[i];
+            }
+        }
+        // else: dst == src, no move needed
+    }
+}
+else
+{
+    static import core.stdc.string;
+    alias memcpy = core.stdc.string.memcpy;
+    alias memmove = core.stdc.string.memmove;
+}
+
+version (NoStdc)
+{
     version (linux)
     {
         public import mar.mem.mmap;
