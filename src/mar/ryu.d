@@ -5,7 +5,6 @@ https://github.com/ulfjack/ryu
 */
 module mar.ryu;
 
-// Function precondition: v is not a 10-digit number.
 // (f2s: 9 digits are sufficient for round-tripping.)
 // (d2fixed: We print 9-digit blocks.)
 private auto decimalLength9(const uint v)
@@ -20,6 +19,31 @@ in { assert(v < 1000000000); } do
     if (v >= 100) { return 3; }
     if (v >= 10) { return 2; }
     return 1;
+}
+
+// (17 digits are sufficient for round-tripping.)
+private auto decimalLength17(const ulong v)
+in { assert(v < 100000000000000000L); } do
+{
+  // This is slightly faster than a loop.
+  // The average output length is 16.38 digits, so we check high-to-low.
+  if (v >= 10000000000000000L) { return 17; }
+  if (v >= 1000000000000000L) { return 16; }
+  if (v >= 100000000000000L) { return 15; }
+  if (v >= 10000000000000L) { return 14; }
+  if (v >= 1000000000000L) { return 13; }
+  if (v >= 100000000000L) { return 12; }
+  if (v >= 10000000000L) { return 11; }
+  if (v >= 1000000000L) { return 10; }
+  if (v >= 100000000L) { return 9; }
+  if (v >= 10000000L) { return 8; }
+  if (v >= 1000000L) { return 7; }
+  if (v >= 100000L) { return 6; }
+  if (v >= 10000L) { return 5; }
+  if (v >= 1000L) { return 4; }
+  if (v >= 100L) { return 3; }
+  if (v >= 10L) { return 2; }
+  return 1;
 }
 
 // This approximation works up to the point that the multiplication overflows at e = 3529.
@@ -216,25 +240,29 @@ private uint mulPow5divPow2(const uint m, const uint i, const int j)
 struct FloatingDecimal32
 {
     uint mantissa;
-    // Decimal exponent's range is -45 to 38
-    // inclusive, and can fit in a short if needed.
-    int exponent;
+    byte exponent; // range is -45 to 38
+}
+// A floating decimal representing m * 10^e.
+struct FloatingDecimal64
+{
+    ulong mantissa;
+    short exponent; // range is -324 to 308 inclusive.
 }
 
-private FloatingDecimal32 f2d(const uint ieeeMantissa, const uint ieeeExponent)
+private FloatingDecimal32 f2d(const uint mantissa, const uint exponent)
 {
     int e2;
     uint m2;
-    if (ieeeExponent == 0)
+    if (exponent == 0)
     {
         // We subtract 2 so that the bounds computation has 2 additional bits.
         e2 = 1 - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
-        m2 = ieeeMantissa;
+        m2 = mantissa;
     }
     else
     {
-        e2 = cast(int) ieeeExponent - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
-        m2 = (1u << FLOAT_MANTISSA_BITS) | ieeeMantissa;
+        e2 = cast(int) exponent - FLOAT_BIAS - FLOAT_MANTISSA_BITS - 2;
+        m2 = (1u << FLOAT_MANTISSA_BITS) | mantissa;
     }
     const bool even = (m2 & 1) == 0;
     const bool acceptBounds = even;
@@ -248,7 +276,7 @@ private FloatingDecimal32 f2d(const uint ieeeMantissa, const uint ieeeExponent)
     const uint mv = 4 * m2;
     const uint mp = 4 * m2 + 2;
     // Implicit bool -> int conversion. True is 1, false is 0.
-    const uint mmShift = ieeeMantissa != 0 || ieeeExponent <= 1;
+    const uint mmShift = mantissa != 0 || exponent <= 1;
     const uint mm = 4 * m2 - 1 - mmShift;
 
     // Step 3: Convert to a decimal power base using 64-bit arithmetic.
@@ -415,7 +443,8 @@ private FloatingDecimal32 f2d(const uint ieeeMantissa, const uint ieeeExponent)
     }
 
     FloatingDecimal32 fd;
-    fd.exponent = exp;
+    assert(exp >= -45 && exp <= 38);
+    fd.exponent = cast(byte)exp;
     fd.mantissa = output;
     return fd;
 }
@@ -530,16 +559,16 @@ ubyte floatToString(float f, char* result)
 
     // Decode bits into sign, mantissa, and exponent.
     const bool ieeeSign = ((bits >> (FLOAT_MANTISSA_BITS + FLOAT_EXPONENT_BITS)) & 1) != 0;
-    const uint ieeeMantissa = bits & ((1u << FLOAT_MANTISSA_BITS) - 1);
-    const uint ieeeExponent = (bits >> FLOAT_MANTISSA_BITS) & ((1u << FLOAT_EXPONENT_BITS) - 1);
+    const uint mantissa = bits & ((1u << FLOAT_MANTISSA_BITS) - 1);
+    const uint exponent = (bits >> FLOAT_MANTISSA_BITS) & ((1u << FLOAT_EXPONENT_BITS) - 1);
 
     // Case distinction; exit early for the easy cases.
-    if (ieeeExponent == ((1u << FLOAT_EXPONENT_BITS) - 1u) || (ieeeExponent == 0 && ieeeMantissa == 0))
+    if (exponent == ((1u << FLOAT_EXPONENT_BITS) - 1u) || (exponent == 0 && mantissa == 0))
     {
-        return copySpecialStr(result, ieeeSign, ieeeExponent != 0, ieeeMantissa != 0);
+        return copySpecialStr(result, ieeeSign, exponent != 0, mantissa != 0);
     }
 
-    const FloatingDecimal32 v = f2d(ieeeMantissa, ieeeExponent);
+    const FloatingDecimal32 v = f2d(mantissa, exponent);
     return toChars(v, ieeeSign, result);
 }
 
