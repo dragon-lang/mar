@@ -32,6 +32,8 @@ auto printArg(Printer, T)(Printer printer, T arg)
         return printer.put(arg ? "true" : "false");
     else static if (is(typeof(arg) == void*))
         return printHex(printer, cast(size_t)arg);
+    else static if (is(typeof(arg) == float))
+        return printFloat(printer, arg);
     else static if (isArithmetic!(typeof(arg)))
     //else static if (__traits(compiles, printDecimal(printer, arg)))
         return printDecimal(printer, arg);
@@ -215,6 +217,16 @@ private char* printHexTemplate(T)(char* buffer, T value)
             return buffer;
         }
     }
+}
+
+auto printFloat(Printer)(Printer printer, float f)
+{
+    import mar.ryu : FLOAT_MAX_CHARS, floatToString;
+
+    auto buffer = printer.getTempBuffer!(FLOAT_MAX_CHARS);
+    scope (exit) printer.commitBuffer(buffer.commitValue);
+    buffer.ptr += floatToString(f, buffer.ptr);
+    return Printer.success;
 }
 
 // TODO: maybe put this somewhere else
