@@ -1,10 +1,13 @@
 module windows.kernel32;
 
+// Note: the reason for separating function definitions by which dll
+//       they appear in is so they can all be in the same file as the
+//       pragma that will cause the library to be linked
 pragma(lib, "kernel32.lib");
 
 import mar.wrap;
 import mar.c : cint, cstring;
-import mar.windows.types : Handle, SRWLock, ThreadStartRoutine, InputRecord;
+import mar.windows.types : Handle, ModuleHandle, SRWLock, ThreadStartRoutine, ThreadPriority, InputRecord;
 import mar.windows.file : OpenAccess, FileShareMode, FileCreateMode, FileD;
 
 extern (Windows) uint GetLastError() nothrow @nogc;
@@ -67,7 +70,6 @@ extern (Windows) BoolExpectNonZero HeapFree(
   void* ptr
 );
 
-
 extern (Windows) BoolExpectNonZero WriteFile(
     const Handle handle,
     const(void)* buffer,
@@ -75,7 +77,6 @@ extern (Windows) BoolExpectNonZero WriteFile(
     uint* written,
     void* overlapped
 ) nothrow @nogc;
-
 
 struct FileAttributesOrError
 {
@@ -117,7 +118,7 @@ extern (Windows) Handle CreateEventA(
   void* eventAttributes,
   cint manualReset,
   cint initialState,
-  char* name
+  cstring name
 );
 extern (Windows) BoolExpectNonZero SetEvent(Handle handle);
 extern (Windows) BoolExpectNonZero ResetEvent(Handle handle);
@@ -139,6 +140,15 @@ extern (Windows) Handle CreateThread(
   uint creationFlags,
   uint* threadID
 );
+extern (Windows) Handle GetCurrentThread();
+extern (Windows) cint GetThreadPriority(Handle thread);
+extern (Windows) BoolExpectNonZero SetThreadPriority(
+  Handle thread,
+  ThreadPriority priority
+);
+
+extern (Windows) ModuleHandle LoadLibraryA(cstring fileName);
+extern (Windows) void* GetProcAddress(ModuleHandle, cstring fileName);
 
 extern (Windows) BoolExpectNonZero FlushFileBuffers(Handle file);
 

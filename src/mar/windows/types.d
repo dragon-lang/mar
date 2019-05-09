@@ -1,6 +1,7 @@
 module mar.windows.types;
 
 import mar.wrap;
+import mar.c : cint;
 import mar.windows.file : FileD;
 
 enum FileAttributes : uint
@@ -43,6 +44,22 @@ struct WindowHandle
 {
     private Handle _handle;
     mixin WrapperFor!"_handle";
+    mixin WrapOpCast;
+}
+
+struct ModuleHandle
+{
+    static Handle nullValue() { return Handle(0); }
+
+    private size_t _value = 0;
+    this(typeof(_value) value) pure nothrow @nogc
+    {
+        this._value = value;
+    }
+    bool isNull() nothrow @nogc const { return _value == 0; }
+    ptrdiff_t numval() nothrow @nogc const { pragma(inline, true); return _value; }
+    void setNull() nothrow @nogc { this._value = 0; }
+    mixin WrapperFor!"_value";
     mixin WrapOpCast;
 }
 
@@ -109,6 +126,16 @@ struct SRWLock
 enum INFINITE = 0xffffffffL;
 
 alias ThreadStartRoutine = extern (Windows) uint function(void* param);
+enum ThreadPriority : cint
+{
+    normal = 0,
+    aboveNormal = 1,
+    belowNormal = -1,
+    highest = 2,
+    idle = -15,
+    lowest = -2,
+    timeCritical = 15,
+}
 
 struct FocusEventRecord
 {
@@ -155,7 +182,9 @@ struct InputRecord
 
 enum ConsoleFlag : uint
 {
-    echoInput = 0x0004,
-    enableWindowInput = 0x0008,
-    enableMouseInput = 0x0010,
+    enableProcessedInput = 0x0001,
+    enableLineInput      = 0x0002,
+    enableEchoInput      = 0x0004,
+    enableWindowInput    = 0x0008,
+    enableMouseInput     = 0x0010,
 }
