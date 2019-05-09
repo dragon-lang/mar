@@ -32,6 +32,17 @@ version (NoStdc)
     }
     void memcpy(void* dst, void* src, size_t length)
     {
+        // simple implementation, slow, but should work in all cases
+        foreach (i; 0 .. length)
+        {
+            dst[i] = src[i];
+        }
+
+        /*
+        TODO: using a size_t or other type larger than a byte
+              to perform the copy may make since in certain conditions,
+              however, I think that doing so will require alignment to be checked
+              first, so may only make sense for larger lengths.
         size_t* dstPtr = cast(size_t*)dst;
         size_t* srcPtr = cast(size_t*)src;
         for ( ;length >= size_t.sizeof; dstPtr++, srcPtr++, length -= size_t.sizeof)
@@ -44,6 +55,7 @@ version (NoStdc)
         {
             dstPtr2[0] = srcPtr2[0];
         }
+        */
     }
     void memmove(T,U)(T* dst, U* src, size_t length)
     {
