@@ -52,43 +52,53 @@ struct MallocArrayBuilderPolicy(size_t InitialItemCount)
 struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
 {
     private T[] buffer;
-    private size_t count;
+    private size_t _length;
 
-    T[] data() const { pragma(inline, true); return (cast(T[])buffer)[0 .. count]; }
+    auto ref opIndex(size_t index) inout { return buffer[index]; }
+    T[] data() const { pragma(inline, true); return (cast(T[])buffer)[0 .. _length]; }
+    size_t length() const { return _length; }
 
     MemoryResult tryPut(T item)
     {
-        if (count == buffer.length)
+        if (_length == buffer.length)
         {
-            auto result = Policy.increaseBuffer!T(buffer, count + 1, count);
-            if (result.length < count + 1)
+            auto result = Policy.increaseBuffer!T(buffer, _length + 1, _length);
+            if (result.length < _length + 1)
                 return MemoryResult.outOfMemory;
             this.buffer = result;
         }
-        buffer[count++] = item;
+        buffer[_length++] = item;
         return MemoryResult.success;
     }
     MemoryResult tryPutRange(U)(U[] items)
     {
         import mar.array : acopy;
 
-        auto lengthNeeded = count + items.length;
+        auto lengthNeeded = _length + items.length;
         if (lengthNeeded > buffer.length)
         {
-            auto result = Policy.increaseBuffer!T(buffer, lengthNeeded, count);
+            auto result = Policy.increaseBuffer!T(buffer, lengthNeeded, _length);
             if (result.length < lengthNeeded)
                 return MemoryResult.outOfMemory;
             this.buffer = result;
         }
-        acopy(buffer.ptr + count, items);
-        count += items.length;
+        acopy(buffer.ptr + _length, items);
+        _length += items.length;
         return MemoryResult.success;
+    }
+    void removeAt(size_t index)
+    {
+        for (size_t i = index; i + 1 < _length; i++)
+        {
+            buffer[i] = buffer[i+1];
+        }
+        _length--;
     }
 
     auto pop()
     {
-        auto result = buffer[count-1];
-        count--;
+        auto result = buffer[_length-1];
+        _length--;
         return result;
     }
 
@@ -96,7 +106,7 @@ struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
     {
         Policy.free(buffer);
         buffer = null;
-        count = 0;
+        _length = 0;
     }
 }
 

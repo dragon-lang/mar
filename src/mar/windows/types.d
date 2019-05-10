@@ -188,3 +188,8 @@ enum ConsoleFlag : uint
     enableWindowInput    = 0x0008,
     enableMouseInput     = 0x0010,
 }
+
+ubyte LOBYTE(T)(T value) { pragma(inline, true); return cast(ubyte)value; }
+ubyte HIBYTE(T)(T value) { pragma(inline, true); return cast(ubyte)(cast(ushort)value >> 8); }
+ushort LOWORD(T)(T value) { pragma(inline, true); return cast(ushort)value; }
+ushort HIWORD(T)(T value) { pragma(inline, true); return cast(ushort)(cast(uint)value >> 16); }

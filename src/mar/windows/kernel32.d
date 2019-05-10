@@ -77,6 +77,13 @@ extern (Windows) BoolExpectNonZero WriteFile(
     uint* written,
     void* overlapped
 ) nothrow @nogc;
+extern (Windows) BoolExpectNonZero ReadFile(
+    const Handle handle,
+    const(void)* buffer,
+    uint length,
+    uint* read,
+    void* overlapped
+) nothrow @nogc;
 
 struct FileAttributesOrError
 {
