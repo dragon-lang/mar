@@ -19,6 +19,13 @@ template isIndexable(T)
     enum isIndexable = is(typeof(T.init[0]));
 }
 
+auto asDynamic(T, size_t size)(ref T[size] array)
+{
+    pragma(inline, true);
+    T[] dynamicArray = array;
+    return dynamicArray;
+}
+
 bool contains(T, U)(T arr, U elem)
 {
     pragma(inline, true);
@@ -94,17 +101,31 @@ if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 in { assert(dst.length >= src.length, "copyFrom source length larger than destination"); } do
 {
     pragma(inline, true);
+    static assert (!__traits(isStaticArray, T), "acopy doest not accept static arrays since they are passed by value");
+
     import mar.mem : memcpy;
     memcpy(cast(void*)dst.ptr, cast(void*)src.ptr, src.length * ElementSizeForCopy!dst);
+}
+/// ditto
+void acopy(T,U)(T dst, U src) @system
+if (isArrayLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
+{
+    pragma(inline, true);
+    static assert (!__traits(isStaticArray, T), "acopy doest not accept static arrays since they are passed by value");
+
+    import mar.mem : memcpy;
+    memcpy(cast(void*)dst.ptr, cast(void*)src, dst.length * ElementSizeForCopy!dst);
 }
 /// ditto
 void acopy(T,U)(T dst, U src) @system
 if (isPointerLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 {
     pragma(inline, true);
+
     import mar.mem : memcpy;
     memcpy(cast(void*)dst, cast(void*)src.ptr, src.length * ElementSizeForCopy!dst);
 }
+/// ditto
 void acopy(T,U)(T dst, U src, size_t size) @system
 if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
 {
@@ -121,8 +142,18 @@ if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
 in { assert(dst.length >= src.length, "moveFrom source length larger than destination"); } do
 {
     pragma(inline, true);
+    static assert (!__traits(isStaticArray, T), "amove doest not accept static arrays since they are passed by value");
     import mar.mem : memmove;
     memmove(cast(void*)dst.ptr, cast(void*)src.ptr, src.length * ElementSizeForCopy!dst);
+}
+/// ditto
+void amove(T,U)(T dst, U src) @system
+if (isArrayLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
+{
+    pragma(inline, true);
+    static assert (!__traits(isStaticArray, T), "amove doest not accept static arrays since they are passed by value");
+    import mar.mem : memmove;
+    memmove(cast(void*)dst.ptr, cast(void*)src, dst.length * ElementSizeForCopy!dst);
 }
 /// ditto
 void amove(T,U)(T dst, U src) @system
@@ -150,7 +181,7 @@ private size_t diffIndex(const(void)* lhs, const(void)* rhs, size_t limit)
     {
         if (next <= limit)
         {
-            if 
+            if
         }
         dstPtr[0] = srcPtr[0];
     }
@@ -207,10 +238,16 @@ private bool aequals(const(void)* lhs, const(void)* rhs, size_t length)
 }
 
 bool startsWith(T,U)(T lhs, U rhs)
+if (isArrayLike!T)
 {
     if (lhs.length < rhs.length)
         return false;
     return aequals(&lhs[0], &rhs[0], rhs.length);
+}
+bool startsWith(T,U)(T lhs, U rhs)
+if (isPointerLike!T)
+{
+    return aequals(lhs, &rhs[0], rhs.length);
 }
 bool endsWith(T,U)(T lhs, U rhs)
 //if (isArrayLike!T && isArrayLike!U)
