@@ -7,7 +7,9 @@ pragma(lib, "kernel32.lib");
 
 import mar.wrap;
 import mar.c : cint, cstring;
-import mar.windows.types : Handle, ModuleHandle, SRWLock, ThreadStartRoutine, ThreadPriority, InputRecord;
+import mar.windows.types :
+    Handle, ModuleHandle, SecurityAttributes, SRWLock,
+    ThreadStartRoutine, ThreadPriority, InputRecord;
 import mar.windows.file : OpenAccess, FileShareMode, FileCreateMode, FileD;
 
 extern (Windows) uint GetLastError() nothrow @nogc;
@@ -106,6 +108,11 @@ extern (Windows) BoolExpectNonZero CreateDirectoryA(
     void* securityAttrs,
 ) nothrow @nogc;
 
+
+extern (Windows) uint GetFileSize(
+    Handle file,
+    uint* fileSizeHigh,
+) nothrow @nogc;
 extern (Windows) FileD CreateFileA(
     cstring filename,
     OpenAccess access,
@@ -115,17 +122,32 @@ extern (Windows) FileD CreateFileA(
     uint flagsAndAttributes,
     Handle tempalteFile
 ) nothrow @nogc;
+extern (Windows) Handle CreateFileMappingA(
+    Handle file,
+    SecurityAttributes* attributes,
+    uint protect,
+    uint maxSizeHigh,
+    uint maxSizeLow,
+    cstring name
+) nothrow @nogc;
+extern (Windows) void* MapViewOfFile(
+    Handle fileMappingObject,
+    uint desiredAccess,
+    uint offsetHigh,
+    uint offsetLow,
+    size_t size
+) nothrow @nogc;
+extern (Windows) BoolExpectNonZero UnmapViewOfFile(void* ptr);
 
 extern (Windows) void InitializeSRWLock(SRWLock* lock);
 extern (Windows) void AcquireSRWLockExclusive(SRWLock* lock);
 extern (Windows) void ReleaseSRWLockExclusive(SRWLock* lock);
 
 extern (Windows) Handle CreateEventA(
-  //LPSECURITY_ATTRIBUTES lpEventAttributes,
-  void* eventAttributes,
-  cint manualReset,
-  cint initialState,
-  cstring name
+    SecurityAttributes* eventAttributes,
+    cint manualReset,
+    cint initialState,
+    cstring name
 );
 extern (Windows) BoolExpectNonZero SetEvent(Handle handle);
 extern (Windows) BoolExpectNonZero ResetEvent(Handle handle);
@@ -134,24 +156,23 @@ extern (Windows) BoolExpectNonZero QueryPerformanceFrequency(long* frequency);
 extern (Windows) BoolExpectNonZero QueryPerformanceCounter(long* count);
 
 extern (Windows) uint WaitForSingleObject(
-  Handle handle,
-  uint  millis
+    Handle handle,
+    uint  millis
 );
 
 extern (Windows) Handle CreateThread(
-  //LPSECURITY_ATTRIBUTES   lpThreadAttributes,
-  void* attributes,
-  size_t stackSize,
-  ThreadStartRoutine start,
-  void* parameter,
-  uint creationFlags,
-  uint* threadID
+    SecurityAttributes* attributes,
+    size_t stackSize,
+    ThreadStartRoutine start,
+    void* parameter,
+    uint creationFlags,
+    uint* threadID
 );
 extern (Windows) Handle GetCurrentThread();
 extern (Windows) cint GetThreadPriority(Handle thread);
 extern (Windows) BoolExpectNonZero SetThreadPriority(
-  Handle thread,
-  ThreadPriority priority
+    Handle thread,
+    ThreadPriority priority
 );
 
 extern (Windows) ModuleHandle LoadLibraryA(cstring fileName);

@@ -88,6 +88,13 @@ struct CriticalSection
     size_t                spinCount; // TODO: is size_t right here?
 }
 
+struct SecurityAttributes
+{
+    uint length;
+    void* descriptor;
+    cint inheritHandle;
+}
+
 struct Guid
 {
     uint a;
@@ -124,6 +131,7 @@ struct SRWLock
 }
 
 enum INFINITE = 0xffffffffL;
+enum INVALID_FILE_SIZE = 0xffffffff;
 
 alias ThreadStartRoutine = extern (Windows) uint function(void* param);
 enum ThreadPriority : cint
