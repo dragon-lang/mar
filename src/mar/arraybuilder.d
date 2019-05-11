@@ -2,53 +2,6 @@ module mar.arraybuilder;
 
 import mar.expect : MemoryResult;
 
-struct MallocArrayBuilderPolicy(size_t InitialItemCount)
-{
-    static import mar.mem;
-
-    /** Returns: null if out of memory */
-    static T[] increaseBuffer(T)(T[] buffer, size_t minNewLength, size_t preserveLength)
-    {
-        pragma(inline, true);
-        import mar.conv : staticCast;
-        auto result = increaseBuffer(buffer, minNewLength, preserveLength, T.sizeof);
-        return staticCast!(T[])(result);
-    }
-    /// ditto
-    static void[] increaseBuffer(void[] buffer, size_t minNewLength, size_t preserveLength, size_t elementSize)
-    {
-        import mar.array : acopy;
-
-        size_t newLength;
-        if (buffer.length == 0)
-            newLength = InitialItemCount;
-        else
-            newLength = buffer.length * 2;
-        if (newLength < minNewLength)
-            newLength = minNewLength;
-
-        auto newByteSize = newLength * elementSize;
-
-        void* newBuffer;
-        if (mar.mem.tryRealloc(buffer.ptr, newByteSize))
-            newBuffer = buffer.ptr;
-        else
-        {
-            newBuffer = mar.mem.malloc(newByteSize);
-            if (!newBuffer)
-                return null;
-            acopy(newBuffer, buffer.ptr, preserveLength * elementSize);
-            mar.mem.free(buffer.ptr);
-        }
-        return newBuffer[0 .. newLength];
-    }
-    static void free(T)(T[] buffer)
-    {
-        pragma(inline, true);
-        mar.mem.free(buffer.ptr);
-    }
-}
-
 struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
 {
     private T[] buffer;
@@ -57,6 +10,12 @@ struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
     auto ref opIndex(size_t index) inout { return buffer[index]; }
     T[] data() const { pragma(inline, true); return (cast(T[])buffer)[0 .. _length]; }
     size_t length() const { return _length; }
+
+    void shrinkTo(size_t newLength)
+    in { assert(newLength <= _length); } do
+    {
+        this._length = newLength;
+    }
 
     MemoryResult tryPut(T item)
     {
@@ -107,6 +66,53 @@ struct ArrayBuilder(T, Policy = MallocArrayBuilderPolicy!32)
         Policy.free(buffer);
         buffer = null;
         _length = 0;
+    }
+}
+
+struct MallocArrayBuilderPolicy(size_t InitialItemCount)
+{
+    static import mar.mem;
+
+    /** Returns: null if out of memory */
+    static T[] increaseBuffer(T)(T[] buffer, size_t minNewLength, size_t preserveLength)
+    {
+        pragma(inline, true);
+        import mar.conv : staticCast;
+        auto result = increaseBuffer(buffer, minNewLength, preserveLength, T.sizeof);
+        return staticCast!(T[])(result);
+    }
+    /// ditto
+    static void[] increaseBuffer(void[] buffer, size_t minNewLength, size_t preserveLength, size_t elementSize)
+    {
+        import mar.array : acopy;
+
+        size_t newLength;
+        if (buffer.length == 0)
+            newLength = InitialItemCount;
+        else
+            newLength = buffer.length * 2;
+        if (newLength < minNewLength)
+            newLength = minNewLength;
+
+        auto newByteSize = newLength * elementSize;
+
+        void* newBuffer;
+        if (mar.mem.tryRealloc(buffer.ptr, newByteSize))
+            newBuffer = buffer.ptr;
+        else
+        {
+            newBuffer = mar.mem.malloc(newByteSize);
+            if (!newBuffer)
+                return null;
+            acopy(newBuffer, buffer.ptr, preserveLength * elementSize);
+            mar.mem.free(buffer.ptr);
+        }
+        return newBuffer[0 .. newLength];
+    }
+    static void free(T)(T[] buffer)
+    {
+        pragma(inline, true);
+        mar.mem.free(buffer.ptr);
     }
 }
 

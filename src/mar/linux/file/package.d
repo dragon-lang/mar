@@ -2,6 +2,7 @@ module mar.linux.file;
 
 public import mar.linux.file.perm;
 
+import mar.passfail;
 import mar.typecons : ValueOrErrorCode;
 import mar.wrap;
 import mar.c;
@@ -86,6 +87,18 @@ struct FileD
     {
         pragma(inline, true);
         write(args, '\n');
+    }
+
+    passfail tryFlush() const
+    {
+        pragma(inline, true);
+        return passfail.pass;
+    }
+
+    auto read(T)(T[] buffer) const if (T.sizeof <= 1)
+    {
+        pragma(inline, true);
+        return sys_read(this, buffer.ptr, buffer.length);
     }
 }
 

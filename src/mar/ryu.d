@@ -580,13 +580,13 @@ unittest
     {
         stdout.writeln("testing ", expected);
         char[100] buffer;
-	const actual = buffer[0 .. floatToString(value, buffer.ptr)];
-	if (actual != expected)
-	{
-	    stdout.writeln("expected: ", expected);
-	    stdout.writeln("actual  : ", actual);
-	    assert(0);
-	}
+        const actual = buffer[0 .. floatToString(value, buffer.ptr)];
+        if (actual != expected)
+        {
+            stdout.writeln("expected: ", expected);
+            stdout.writeln("actual  : ", actual);
+            assert(0);
+        }
     }
     test("0E0", 0.0);
     test("-0E0", -0.0);
@@ -693,13 +693,13 @@ unittest
     for (uint bits = 0;; bits++)
     {
         if ((bits & 0xFFFFFF) == 0)
-	    stdout.writeln("0x", bits.formatHex, ": current max is ", maxCharCount);
+        stdout.writeln("0x", bits.formatHex, ": current max is ", maxCharCount);
         char[40] buffer = void;
-	auto length = floatToString(bitsToFloat(bits), buffer.ptr);
-	if (length > maxCharCount)
-	    maxCharCount = length;
+        auto length = floatToString(bitsToFloat(bits), buffer.ptr);
+        if (length > maxCharCount)
+            maxCharCount = length;
         if (bits == uint.max)
-	    break;
+            break;
     }
     stdout.writeln("max char count is ", maxCharCount);
     assert(FLOAT_MAX_CHARS == maxCharCount);

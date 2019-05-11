@@ -91,6 +91,8 @@ struct ProcBuilder
         {
             // TODO: append to args, make sure it is escaped if necessary
             assert (0, "mar.process ProcBuilder.tryPut:cstring not impl");
+            import mar.passfail;
+            return passfail.fail;
         }
         else version (Posix)
             return args.tryPut(arg);
@@ -101,6 +103,8 @@ struct ProcBuilder
         auto tryPut(SentinelArray!(const(char)) arg)
         {
             assert (0, "mar.process ProcBuilder.tryPut:SentinelArray not impl");
+            import mar.passfail;
+            return passfail.fail;
         }
     }
     else version (Posix)
@@ -163,7 +167,10 @@ struct ProcBuilder
     auto print(P)(P printer) const
     {
         version (Windows)
-            static assert(0, "not impl");
+        {
+            assert(0, "not impl");
+            return P.success;
+        }
         else version (Posix)
         {
             // TODO: how to handle args with spaces?
@@ -204,11 +211,14 @@ unittest
         }
         else
         {
-            import mar.linux.process : wait;
-            import mar.stdio; stdout.write("started /usr/bin/env\n");
-            auto waitResult = wait(startResult.val);
-            stdout.write("waitResult is ", waitResult, "\n");
-            assert(!waitResult.failed);
+            version (posix)
+            {
+                import mar.linux.process : wait;
+                import mar.stdio; stdout.write("started /usr/bin/env\n");
+                auto waitResult = wait(startResult.val);
+                stdout.write("waitResult is ", waitResult, "\n");
+                assert(!waitResult.failed);
+            }
         }
     }
     {

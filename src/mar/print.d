@@ -26,13 +26,13 @@ auto printArg(Printer, T)(Printer printer, T arg)
         return arg.print(printer);
     else static if (isStringLike!(typeof(arg)))
         return printer.put(cast(const(char)[])arg);
-    else static if (is(typeof(arg) == char))
+    else static if (is(Unqual!(typeof(arg)) == char))
         return printer.putc(arg);
-    else static if (is(typeof(arg) == bool))
+    else static if (is(Unqual!(typeof(arg)) == bool))
         return printer.put(arg ? "true" : "false");
     else static if (is(typeof(arg) == void*))
         return printHex(printer, cast(size_t)arg);
-    else static if (is(typeof(arg) == float))
+    else static if (is(Unqual!(typeof(arg)) == float))
         return printFloat(printer, arg);
     else static if (isArithmetic!(typeof(arg)))
     //else static if (__traits(compiles, printDecimal(printer, arg)))

@@ -21,6 +21,11 @@ struct passfail
 
     @property auto passed() const pure nothrow @nogc { return _passed; }
     @property auto failed() const pure nothrow @nogc { return !_passed; }
+    void enforce() const
+    {
+        static import mar.enforce;
+        mar.enforce.enforce(this);
+    }
 
     passfail opBinary(string op)(const(passfail) right) const pure nothrow @nogc
     {

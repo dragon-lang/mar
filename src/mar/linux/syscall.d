@@ -428,13 +428,13 @@ extern (C) SyscallExpectZero sys_chroot(cstring path)
        they would be found in /proc/filesystems (i.e. "btrfs", "extf", ...)
        run "cat /proc/filesystems" to see them, here is example output:
 ---
-nodev	pipefs
-nodev	devpts
-nodev	hugetlbfs
-nodev	pstore
-nodev	mqueue
-	ext3
-	ext2
+nodev    pipefs
+nodev    devpts
+nodev    hugetlbfs
+nodev    pstore
+nodev    mqueue
+    ext3
+    ext2
 ---
 first column signifies whether the file system is mounted on a block device.
 "nodev" means they are not mounted on a device.  Second column is the name.

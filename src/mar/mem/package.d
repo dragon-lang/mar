@@ -35,7 +35,7 @@ version (NoStdc)
         // simple implementation, slow, but should work in all cases
         foreach (i; 0 .. length)
         {
-            dst[i] = src[i];
+            (cast(ubyte*)dst)[i] = (cast(ubyte*)src)[i];
         }
 
         /*
@@ -87,6 +87,7 @@ else
     static import core.stdc.string;
     alias memcpy = core.stdc.string.memcpy;
     alias memmove = core.stdc.string.memmove;
+    alias memset = core.stdc.string.memset;
 }
 
 version (NoStdc)

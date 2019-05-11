@@ -237,6 +237,57 @@ if (isArrayLike!T && T.init[0].sizeof == 1 && value.sizeof == 1)
     }
 }
 
+// A fixed size static array, that allows you to add/remove items
+struct StaticArray(T, size_t Capacity)
+{
+    import mar.expect : MemoryResult;
+
+    private T[Capacity] buffer;
+    private size_t _length;
+
+    auto ref opIndex(size_t index) inout { return buffer[index]; }
+    T[] data() const { pragma(inline, true); return (cast(T[])buffer)[0 .. _length]; }
+    auto length() const { return _length; }
+    auto capacity() const { return Capacity; }
+
+    MemoryResult tryPut(T item)
+    {
+        if (_length == buffer.length)
+            return MemoryResult.outOfMemory;
+
+        buffer[_length++] = item;
+        return MemoryResult.success;
+    }
+    MemoryResult tryPutRange(U)(U[] items)
+    {
+        import mar.array : acopy;
+
+        auto lengthNeeded = _length + items.length;
+        if (lengthNeeded > buffer.length)
+            return MemoryResult.outOfMemory;
+
+        acopy(buffer.ptr + _length, items);
+        _length += items.length;
+        return MemoryResult.success;
+    }
+    void removeAt(size_t index)
+    {
+        for (size_t i = index; i + 1 < _length; i++)
+        {
+            buffer[i] = buffer[i+1];
+        }
+        _length--;
+    }
+
+    auto pop()
+    {
+        auto result = buffer[_length-1];
+        _length--;
+        return result;
+    }
+}
+
+
 
 /**
 TODO: move this to the mored repository

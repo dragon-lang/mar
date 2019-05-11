@@ -69,6 +69,8 @@ extern (C) WriteResult tryWrite(Handle handle, const(void)* ptr, size_t n)
 
 struct FileD
 {
+    import mar.expect;
+
     private ptrdiff_t _value = -1;
     this(typeof(_value) value) pure nothrow @nogc
     {
@@ -124,6 +126,18 @@ struct FileD
         if (FlushFileBuffers(asHandle).failed)
             return passfail.fail;
         return passfail.pass;
+    }
+
+    mixin ExpectMixin!("ReadResult", uint,
+        ErrorCase!("readFileFailed", "ReadFile failed, error=%", uint));
+    auto read(T)(T[] buffer) const if (T.sizeof <= 1)
+    {
+        pragma(inline, true);
+        import mar.windows.kernel32 : ReadFile;
+        uint bytesRead;
+        if (ReadFile(asHandle, buffer.ptr, 1, &bytesRead, null).failed)
+            return ReadResult.readFileFailed(GetLastError());
+        return ReadResult.success(bytesRead);
     }
 }
 
