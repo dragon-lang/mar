@@ -144,7 +144,8 @@ unittest
     }
 }
 
-private char* printDecimalTemplate(T)(char* buffer, T value)
+alias printDecimalSizet = printDecimalTemplate!size_t;
+char* printDecimalTemplate(T)(char* buffer, T value)
 {
     import mar.array : areverse;
 

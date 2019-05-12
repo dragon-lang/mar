@@ -149,7 +149,10 @@ else version (Windows)
 
 auto getBasename(inout(char)[] file)
 {
-    return file[file.lastIndexOrLength('/') + 1 .. $];
+    const result = file.lastIndexOrMax('/');
+    if (result == result.max)
+        return file;
+    return file[result + 1 .. $];
 }
 auto stripExt(inout(char)[] file)
 {

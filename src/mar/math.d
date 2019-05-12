@@ -1,4 +1,4 @@
-module src.mar.math;
+module mar.math;
 
 version (NoStdc)
 {
