@@ -1,4 +1,7 @@
-module mar.windows.types;
+/**
+Contains code to interface with windows that does not require linking to any external libraries.
+*/
+module mar.windows;
 
 import mar.wrap;
 import mar.c : cint;
@@ -95,6 +98,15 @@ struct SecurityAttributes
     cint inheritHandle;
 }
 
+
+struct SRWLock
+{
+    void* ptr;
+}
+
+enum INFINITE = 0xffffffffL;
+enum INVALID_FILE_SIZE = 0xffffffff;
+
 struct Guid
 {
     uint a;
@@ -124,14 +136,6 @@ struct Guid
             ~ "])";
     }
 }
-
-struct SRWLock
-{
-    void* ptr;
-}
-
-enum INFINITE = 0xffffffffL;
-enum INVALID_FILE_SIZE = 0xffffffff;
 
 alias ThreadEntry = extern (Windows) uint function(void* param);
 enum ThreadPriority : cint

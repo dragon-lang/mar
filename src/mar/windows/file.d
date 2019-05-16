@@ -4,7 +4,7 @@ import mar.passfail;
 import mar.wrap;
 import mar.c : cstring;
 
-import mar.windows.types : Handle;
+import mar.windows : Handle;
 import mar.windows.kernel32 :
     GetLastError, WriteFile;
 
@@ -148,7 +148,7 @@ bool fileExists(cstring filename)
 
 bool isDir(cstring path)
 {
-    import mar.windows.types : FileAttributes;
+    import mar.windows : FileAttributes;
     import mar.windows.kernel32 : GetFileAttributesA;
 
     auto result = GetFileAttributesA(path);

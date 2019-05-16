@@ -7,10 +7,10 @@ import mar.expect : ExpectMixin, ErrorCase;
 
 version (Windows)
 {
-    import mar.windows.types : Handle;
-    static import mar.windows.types;
+    import mar.windows : Handle;
+    static import mar.windows;
 
-    alias ThreadEntry = mar.windows.types.ThreadEntry;
+    alias ThreadEntry = mar.windows.ThreadEntry;
     mixin ExpectMixin!("StartThreadResult", Handle,
         ErrorCase!("createThreadFailed", "CreateThread failed, e=%", uint));
     enum ThreadEntryResult : uint

@@ -10,7 +10,7 @@ version (linux)
 else version (Windows)
 {
     public import mar.windows.file;
-    import mar.windows.types : Handle;
+    import mar.windows : Handle;
     import mar.windows.kernel32 : CloseHandle;
     // dummy mode flags for windows
     enum ModeFlags
@@ -251,7 +251,7 @@ auto mmap(FileD file, MMapAccess access, ulong offset, size_t size)
 {
     version (Windows)
     {
-        import mar.windows.types : INVALID_FILE_SIZE;
+        import mar.windows : INVALID_FILE_SIZE;
         import mar.windows.kernel32 : GetLastError,
             GetFileSize, CreateFileMappingA, MapViewOfFile;
 

@@ -2,6 +2,7 @@ module mar.windows.winmm;
 
 pragma(lib, "winmm.lib");
 
+import mar.windows : Guid;
 import mar.windows.waveout : WaveoutHandle, WaveHeader, WaveFormatEx;
 
 enum MultimediaResult
@@ -99,7 +100,7 @@ struct MidiHeader
 struct MidiInHandle
 {
     import mar.wrap;
-    import mar.windows.types : Handle;
+    import mar.windows : Handle;
 
     private Handle _handle;
     mixin WrapperFor!"_handle";
@@ -131,3 +132,7 @@ extern (Windows) MultimediaResult midiInAddBuffer(
     MidiHeader* inHeader,
     uint inHeaderSize
 );
+
+// TODO: verify that this guid isn't useful without linking to winmm.lib
+__gshared immutable MMDeviceEnumeratorGuid =
+    Guid.fromString!"BCDE0395-E52F-467C-8E3D-C4579291692E";

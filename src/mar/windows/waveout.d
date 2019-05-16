@@ -10,7 +10,7 @@ enum WaveFormatTag : ushort
 struct WaveoutHandle
 {
     import mar.wrap;
-    import mar.windows.types : Handle;
+    import mar.windows : Handle;
 
     private Handle _handle;
     mixin WrapperFor!"_handle";
@@ -39,14 +39,14 @@ enum ChannelFlags : uint
 
 struct KSDataFormat
 {
-    import mar.windows.types : Guid;
+    import mar.windows : Guid;
     static __gshared immutable ieeeFloat = Guid.fromString!"00000003-0000-0010-8000-00aa00389b71";
 }
 
 struct WaveFormatExtensible
 {
     import mar.wrap;
-    import mar.windows.types : Guid;
+    import mar.windows : Guid;
 
     WaveFormatEx format;
     union

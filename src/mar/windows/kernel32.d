@@ -7,7 +7,7 @@ pragma(lib, "kernel32.lib");
 
 import mar.wrap;
 import mar.c : cint, cstring;
-import mar.windows.types :
+import mar.windows :
     Handle, ModuleHandle, SecurityAttributes, SRWLock,
     ThreadEntry, ThreadPriority, InputRecord;
 import mar.windows.file : OpenAccess, FileShareMode, FileCreateMode, FileD;
@@ -89,7 +89,7 @@ extern (Windows) BoolExpectNonZero ReadFile(
 
 struct FileAttributesOrError
 {
-    import mar.windows.types : FileAttributes;
+    import mar.windows : FileAttributes;
 
     private static FileAttributes invalidEnumValue() { pragma(inline, true); return cast(FileAttributes)-1; }
     static FileAttributesOrError invalidValue() { pragma(inline, true); return FileAttributesOrError(invalidEnumValue); }
