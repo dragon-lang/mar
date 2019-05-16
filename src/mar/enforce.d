@@ -97,7 +97,7 @@ void enforce(E...)(bool cond, E errorMsgValues)
         }
     }
 }
-void enforce(T, E...)(T result, E errorMsgValues) if (__traits(hasMember, T, "failed"))
+auto enforce(T, E...)(T result, E errorMsgValues) if (__traits(hasMember, T, "failed"))
 {
     if (result.failed)
     {
@@ -116,6 +116,8 @@ void enforce(T, E...)(T result, E errorMsgValues) if (__traits(hasMember, T, "fa
             throw new EnforceException();
         }
     }
+    static if (__traits(hasMember, T, "val"))
+        return result.val;
 }
 
 passfail reportFail(E...)(bool cond, E errorMsgValues)

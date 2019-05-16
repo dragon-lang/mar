@@ -35,7 +35,7 @@ private template ctfeToString(size_t num)
 mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
 {
     private enum mixinCode = function() {
-        import mar.expect : ExpectFormatRange;
+        import mar.expect : ExpectFormatRange, PrintErrorCaseMixin;
         import mar.print : maxDecimalDigits;
 
         char[maxDecimalDigits!size_t + 1] numBuffer;
@@ -177,7 +177,7 @@ template PrintErrorCaseMixin(string name, string Format, size_t nextFieldIndex, 
      {
          static if (Format.length == 0)
          {
-             static assert(ErrorFieldTypes.length == 0, "Too many types in ErrorCase " ~ name ~ "for format string");
+             static assert(ErrorFieldTypes.length == 0, "Too many types in ErrorCase " ~ name ~ " for format string.");
              enum PrintErrorCaseMixin = "";
          }
          else

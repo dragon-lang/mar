@@ -133,7 +133,7 @@ struct SRWLock
 enum INFINITE = 0xffffffffL;
 enum INVALID_FILE_SIZE = 0xffffffff;
 
-alias ThreadStartRoutine = extern (Windows) uint function(void* param);
+alias ThreadEntry = extern (Windows) uint function(void* param);
 enum ThreadPriority : cint
 {
     normal = 0,

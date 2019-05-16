@@ -21,10 +21,11 @@ struct passfail
 
     @property auto passed() const pure nothrow @nogc { return _passed; }
     @property auto failed() const pure nothrow @nogc { return !_passed; }
-    void enforce() const
+    // TODO: file/line number also?
+    void enforce(E...)(E errorMsgValues) const
     {
         static import mar.enforce;
-        mar.enforce.enforce(this);
+        mar.enforce.enforce(this, errorMsgValues);
     }
 
     passfail opBinary(string op)(const(passfail) right) const pure nothrow @nogc

@@ -1,5 +1,46 @@
 module mar.array;
 
+// Sometimes allows static array literals with -betterC
+// I've seen it work when the ElementType is a primitive type
+// rather than a struct.
+template StaticArray(ElementType, T...)
+{
+    static ElementType[T.length] StaticArray = [T];
+}
+template StaticImmutableArray(ElementType, T...)
+{
+    static immutable ElementType[T.length] StaticImmutableArray = [T];
+}
+
+auto fixedArrayBuilder(T, size_t size)()
+{
+    // Meant to make arrays when they can't be made with array literals because of -betterC bugs.
+    struct Builder
+    {
+        private size_t next;
+        private T[size] array = void;
+        auto ref put(T element)
+        {
+            if (next < size)
+                array[next] = element;
+            next++;
+            return this;
+        }
+        auto finish(string filename = __FILE__, uint line = __LINE__)
+        {
+            if (next != size)
+            {
+                import mar.stdio;
+                import mar.process : exit;
+                stderr.writeln(filename, "(", line, "): change size of fixedArrayBuilder from ", size, " to ", next);
+                exit(1);
+            }
+            return array;
+        }
+    }
+    return Builder(0);
+}
+
 template isArrayLike(T)
 {
     enum isArrayLike =
@@ -24,6 +65,36 @@ auto asDynamic(T, size_t size)(ref T[size] array)
     pragma(inline, true);
     T[] dynamicArray = array;
     return dynamicArray;
+}
+
+struct MallocArrayPointerResult(T)
+{
+    T* val;
+    alias val this;
+    final bool failed() const { return val is null; }
+}
+MallocArrayPointerResult!T tryMallocArrayGetPointer(T)(size_t length)
+{
+    pragma(inline, true);
+    import mar.mem : malloc;
+
+    return MallocArrayPointerResult!T(cast(T*)malloc(T.sizeof * length));
+}
+
+struct MallocArrayResult(T)
+{
+    T[] val;
+    alias val this;
+    final bool failed() const { return val.ptr == null; }
+}
+MallocArrayResult!T tryMallocArray(T)(size_t length)
+{
+    pragma(inline, true);
+    auto result = tryMallocArrayGetPointer!T(length);
+    if (result.failed)
+        return MallocArrayResult!T(null);
+    else
+        return MallocArrayResult!T(result.val[0 .. length]);
 }
 
 bool contains(T, U)(T arr, U elem)
@@ -257,7 +328,11 @@ bool endsWith(T,U)(T lhs, U rhs)
     return aequals(&lhs[lhs.length - rhs.length], &rhs[0], rhs.length);
 }
 
-
+void zero(T)(T[] array)
+{
+    static import mar.mem;
+    mar.mem.zero(array.ptr, array.length * T.sizeof);
+}
 
 void setBytes(T,U)(T dst, U value)
 if (isArrayLike!T && T.init[0].sizeof == 1 && value.sizeof == 1)

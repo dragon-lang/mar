@@ -9,7 +9,7 @@ import mar.wrap;
 import mar.c : cint, cstring;
 import mar.windows.types :
     Handle, ModuleHandle, SecurityAttributes, SRWLock,
-    ThreadStartRoutine, ThreadPriority, InputRecord;
+    ThreadEntry, ThreadPriority, InputRecord;
 import mar.windows.file : OpenAccess, FileShareMode, FileCreateMode, FileD;
 
 extern (Windows) uint GetLastError() nothrow @nogc;
@@ -163,7 +163,7 @@ extern (Windows) uint WaitForSingleObject(
 extern (Windows) Handle CreateThread(
     SecurityAttributes* attributes,
     size_t stackSize,
-    ThreadStartRoutine start,
+    ThreadEntry entry,
     void* parameter,
     uint creationFlags,
     uint* threadID
