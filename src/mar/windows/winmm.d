@@ -132,7 +132,3 @@ extern (Windows) MultimediaResult midiInAddBuffer(
     MidiHeader* inHeader,
     uint inHeaderSize
 );
-
-// TODO: verify that this guid isn't useful without linking to winmm.lib
-__gshared immutable MMDeviceEnumeratorGuid =
-    Guid.fromString!"BCDE0395-E52F-467C-8E3D-C4579291692E";

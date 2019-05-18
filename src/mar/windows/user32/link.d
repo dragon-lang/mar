@@ -1,19 +1,12 @@
-module mar.windows.user32;
+module mar.windows.user32.link;
 
 pragma(lib, "kernel32.lib");
 
 import mar.c : cint, cuint;
-import mar.windows.types : WindowHandle;
+import mar.windows : WindowHandle;
+import mar.windows.user32.nolink;
 
 extern (Windows) WindowHandle GetActiveWindow() nothrow @nogc;
-
-enum MessageBoxType : cuint
-{
-    ok = 0,
-    abortRetryIgnore = 0x2,
-    cancelTryContinue = 0x6,
-    help = 0x4000,
-}
 
 extern (Windows) cint MessageBoxA(
     WindowHandle window,

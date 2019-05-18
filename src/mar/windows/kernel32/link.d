@@ -10,26 +10,13 @@ import mar.c : cint, cstring;
 import mar.windows :
     Handle, ModuleHandle, SecurityAttributes, SRWLock,
     ThreadEntry, ThreadPriority, InputRecord;
+import mar.windows.kernel32.nolink;
 import mar.windows.file : OpenAccess, FileShareMode, FileCreateMode, FileD;
 
 extern (Windows) uint GetLastError() nothrow @nogc;
 extern (Windows) Handle GetStdHandle(uint handle) nothrow @nogc;
 
-/**
-Represents semantics of the windows BOOL return type.
-*/
-struct BoolExpectNonZero
-{
-    private cint _value;
-    bool failed() const { pragma(inline, true); return _value == 0; }
-    bool passed() const { pragma(inline, true); return _value != 0; }
-
-    auto print(P)(P printer) const
-    {
-        return printer.put(passed ? "TRUE" : "FALSE");
-    }
-}
-
+extern (Windows) void DebugBreak() @nogc;
 extern (Windows) void ExitProcess(uint) nothrow @nogc;
 extern (Windows) BoolExpectNonZero CloseHandle(Handle) nothrow @nogc;
 
@@ -87,18 +74,6 @@ extern (Windows) BoolExpectNonZero ReadFile(
     void* overlapped
 ) nothrow @nogc;
 
-struct FileAttributesOrError
-{
-    import mar.windows : FileAttributes;
-
-    private static FileAttributes invalidEnumValue() { pragma(inline, true); return cast(FileAttributes)-1; }
-    static FileAttributesOrError invalidValue() { pragma(inline, true); return FileAttributesOrError(invalidEnumValue); }
-
-    private FileAttributes _attributes;
-    bool isValid() const { return _attributes != invalidEnumValue; }
-    FileAttributes val() const { return _attributes; }
-}
-
 extern (Windows) FileAttributesOrError GetFileAttributesA(
     cstring filename
 ) nothrow @nogc;
@@ -107,7 +82,6 @@ extern (Windows) BoolExpectNonZero CreateDirectoryA(
     cstring filename,
     void* securityAttrs,
 ) nothrow @nogc;
-
 
 extern (Windows) uint GetFileSize(
     Handle file,

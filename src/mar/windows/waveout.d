@@ -17,16 +17,16 @@ struct WaveoutHandle
     mixin WrapOpCast;
 }
 
-align(2):
 struct WaveFormatEx
 {
-  WaveFormatTag tag;
-  ushort  channelCount;
-  uint    samplesPerSec;
-  uint    avgBytesPerSec;
-  ushort  blockAlign;
-  ushort  bitsPerSample;
-  ushort  extraSize;
+align(2):
+    WaveFormatTag tag;
+    ushort  channelCount;
+    uint    samplesPerSec;
+    uint    avgBytesPerSec;
+    ushort  blockAlign;
+    ushort  bitsPerSample;
+    ushort  extraSize;
 }
 static assert(WaveFormatEx.sizeof == 18);
 

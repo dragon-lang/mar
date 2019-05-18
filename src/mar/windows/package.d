@@ -13,6 +13,29 @@ enum FileAttributes : uint
 }
 
 /**
+Equivalent to HRESULT
+*/
+struct HResult
+{
+    private uint value;
+    @property auto passed() const pure nothrow @nogc { return (value & 0x80000000) == 0; }
+    @property auto failed() const pure nothrow @nogc { return (value & 0x80000000) != 0; }
+    // TODO: file/line number also?
+    void enforce(E...)(E errorMsgValues) const
+    {
+        static import mar.enforce;
+        mar.enforce.enforce(this, errorMsgValues);
+    }
+    auto print(P)(P printer) const
+    {
+        import mar.print : printArgs, formatHex;
+        return printArgs(printer, "(0x", value.formatHex,
+            " facility=0x", (0x7FF & (value >> 16)).formatHex,
+            " code=0x", (0xFFFF & value).formatHex, ")");
+    }
+}
+
+/**
 Equivalent to windows HANDLE type.
 */
 struct Handle
@@ -205,3 +228,78 @@ ubyte LOBYTE(T)(T value) { pragma(inline, true); return cast(ubyte)value; }
 ubyte HIBYTE(T)(T value) { pragma(inline, true); return cast(ubyte)(cast(ushort)value >> 8); }
 ushort LOWORD(T)(T value) { pragma(inline, true); return cast(ushort)value; }
 ushort HIWORD(T)(T value) { pragma(inline, true); return cast(ushort)(cast(uint)value >> 16); }
+
+//
+// COM
+//
+enum ClsCtx : uint
+{
+    inprocServer        = 0x00000001,
+    inprocHandler       = 0x00000002,
+    localServer         = 0x00000004,
+    inprocServer16      = 0x00000008,
+    removeServer        = 0x00000010,
+    inprocHandler16     = 0x00000020,
+    reserved1           = 0x00000040,
+    reserved2           = 0x00000080,
+    reserved3           = 0x00000100,
+    reserved4           = 0x00000200,
+    noCodeDownload      = 0x00000400,
+    reserved5           = 0x00000800,
+    noCustomMarshal     = 0x00001000,
+    enableCodeDownload  = 0x00002000,
+    noFailureLog        = 0x00004000,
+    disableAaa          = 0x00008000,
+    enableAaa           = 0x00010000,
+    fromDefaultContext  = 0x00020000,
+    activate32BitServer = 0x00040000,
+    activate64BitServer = 0x00080000,
+    enableCloaking      = 0x00100000,
+    all                 = inprocServer | inprocHandler | localServer | removeServer,
+}
+
+enum VarType : ushort
+{
+    empty           =    0,
+    null_           =    1,
+    //cint            =    2,
+    //clong           =    3,
+    float_          =    4,
+    double_         =    5,
+    currency        =    6,
+    date            =    7,
+    string_         =    8,
+    object          =    9,
+    error           =   10,
+    //bool_         =   11,
+    variant         =   12,
+    dataObject      =   13,
+    decimal         =   14,
+    byte_           =   17,
+    long_           =   20,
+    userDefinedType =   36,
+    array           = 8192,
+}
+struct PropVariant
+{
+    VarType type; static assert(type.offsetof == 0);
+    short reserved1; static assert(reserved1.offsetof == 2);
+    short reserved2; static assert(reserved2.offsetof == 4);
+    short reserved3; static assert(reserved3.offsetof == 6);
+
+    union VariantUnion
+    {
+        char char_;      static assert(char_.offsetof == 0);
+        ubyte ubyte_;    static assert(ubyte_.offsetof == 0);
+        short short_;    static assert(short_.offsetof == 0);
+        ushort ushort_;  static assert(ushort_.offsetof == 0);
+        int int_;        static assert(int_.offsetof == 0);
+        uint uint_;      static assert(uint_.offsetof == 0);
+        long long_;      static assert(long_.offsetof == 0);
+        float float_;    static assert(float_.offsetof == 0);
+        double double_;  static assert(double_.offsetof == 0);
+        Guid* guidPtr;   static assert(guidPtr.offsetof == 0);
+        // There are more possible types, add as needed
+    }
+    VariantUnion val;
+}
