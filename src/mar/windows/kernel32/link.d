@@ -59,6 +59,8 @@ extern (Windows) BoolExpectNonZero HeapFree(
   void* ptr
 );
 
+extern (Windows) void Sleep(uint millis) nothrow @nogc;
+
 extern (Windows) BoolExpectNonZero WriteFile(
     const Handle handle,
     const(void)* buffer,

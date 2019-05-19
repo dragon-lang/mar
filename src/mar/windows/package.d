@@ -158,6 +158,13 @@ struct Guid
             ~ ", cast(ubyte)0x"  ~ uuid[34 .. 36]
             ~ "])";
     }
+    bool opEquals(const ref Guid other) const
+    {
+        return a == other.a
+            && b == b
+            && c == c
+            && d == d;
+    }
     auto print(P)(P printer) const
     {
         import mar.print : printArgs, formatHex, formatPadLeft;

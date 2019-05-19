@@ -151,7 +151,7 @@ struct IAudioClient
 {
     import mar.windows : HResult, Handle, Guid;
     import mar.windows.ole32.nolink : InterfaceID, InterfaceMixin, IUnknown;
-    import mar.windows.waveout : WaveFormatEx;
+    import mar.windows.winmm.nolink : WaveFormatEx;
 
     static __gshared immutable id = InterfaceID.fromString!"1CB9AD4C-DBFA-4c32-B178-C2F568A703B2";
 
@@ -181,6 +181,23 @@ struct IAudioClient
         extern (Windows) HResult function(T*) reset;
         extern (Windows) HResult function(T*, Handle eventHandle) setEventHandle;
         extern (Windows) HResult function(T*, const(InterfaceID)* id, void** obj) getService;
+
+    }
+    mixin InterfaceMixin!(VTableMixin, typeof(this));
+}
+
+struct IAudioRenderClient
+{
+    import mar.windows : HResult;
+    import mar.windows.ole32.nolink : InterfaceID, InterfaceMixin, IUnknown;
+
+    static __gshared immutable id = InterfaceID.fromString!"F294ACFC-3146-4483-A7BF-ADDCA7C260E2";
+
+    mixin template VTableMixin(T)
+    {
+        mixin IUnknown.VTableMixin!T;
+        extern (Windows) HResult function(T*, uint frameCount, void** bufferPtr) getBuffer;
+        extern (Windows) HResult function(T*, uint frameCount, uint flags) releaseBuffer;
 
     }
     mixin InterfaceMixin!(VTableMixin, typeof(this));
