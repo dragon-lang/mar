@@ -82,22 +82,16 @@ auto formatEscape(const(char)* ptr, const char* limit)
 
 unittest
 {
-    import mar.array : aequals;
-    import mar.print;
-    char[50] buf;
-    char[] str(T...)(T args)
-    {
-        return buf[0 .. sprint(buf, args)];
-    }
-    assert(aequals("a", str(formatEscape('a'))));
-    assert(aequals("\\n", str(formatEscape('\n'))));
-    assert(aequals("\\0", str(formatEscape('\0'))));
-    assert(aequals("\\t", str(formatEscape('\t'))));
+    import mar.print : testFormattedValue;
+    testFormattedValue(`a`, 'a'.formatEscape);
+    testFormattedValue(`\n`, '\n'.formatEscape);
+    testFormattedValue(`\0`, '\0'.formatEscape);
+    testFormattedValue(`\t`, '\t'.formatEscape);
 
-    assert(aequals("", str(formatEscape(""))));
-    assert(aequals("a", str(formatEscape("a"))));
-    assert(aequals("foo", str(formatEscape("foo"))));
-    assert(aequals("foo\\n", str(formatEscape("foo\n"))));
-    assert(aequals("\\n\\t\\r\\0", str(formatEscape("\n\t\r\0"))));
+    testFormattedValue(``, "".formatEscape);
+    testFormattedValue(`a`, "a".formatEscape);
+    testFormattedValue(`foo`, "foo".formatEscape);
+    testFormattedValue(`foo\n`, "foo\n".formatEscape);
+    testFormattedValue(`\n\t\r\0`, "\n\t\r\0".formatEscape);
 }
 

@@ -54,6 +54,25 @@ auto printArgs(Printer, T...)(Printer printer, T args)
     return Printer.success;
 }
 
+version (unittest)
+{
+    void testFormattedValue(size_t bufferSize = 100, T)(string expected, T formattedValue,
+         string file = __FILE__, uint line = __LINE__)
+    {
+        //{import mar.stdio; stdout.writeln("testFormattedValue(line=", line, ") '", expected, "'");}
+        char[bufferSize] buffer;
+        const actual = sprint(buffer, formattedValue);
+        if (expected != actual)
+        {
+            import mar.stdio;
+            stderr.writeln(file, "(", line, "): testFormattedValue failed with:");
+            stderr.writeln("  expected '", expected, "'");
+            stderr.writeln("  actual   '", actual, "'");
+            assert(0, "testFormattedValue failed");
+        }
+    }
+}
+
 template maxDecimalDigits(T)
 {
          static if (T.sizeof == 1)
@@ -67,88 +86,126 @@ template maxDecimalDigits(T)
     else static assert(0, "don't know max decimal digit count for " ~ T.stringof);
 }
 
+// TODO: more common number probably won't be so big,
+//       make this a little more optimized
+ubyte decimalDigitsUint(const uint value)
+{
+    if (value >= 1000000000) { return 10; }
+    if (value >= 100000000) { return 9; }
+    if (value >= 10000000) { return 8; }
+    if (value >= 1000000) { return 7; }
+    if (value >= 100000) { return 6; }
+    if (value >= 10000) { return 5; }
+    if (value >= 1000) { return 4; }
+    if (value >= 100) { return 3; }
+    if (value >= 10) { return 2; }
+    return 1;
+}
+// TODO: more common number probably won't be so big,
+//       make this a little more optimized
+ubyte decimalDigitsUlong(const ulong value)
+{
+    if (value <= uint.max)
+        return decimalDigitsUint(cast(uint)value);
+    if (value >= 10000000000000000000LU) { return 20; }
+    if (value >= 1000000000000000000LU) { return 19; }
+    if (value >= 100000000000000000LU) { return 18; }
+    if (value >= 10000000000000000LU) { return 17; }
+    if (value >= 1000000000000000LU) { return 16; }
+    if (value >= 100000000000000LU) { return 15; }
+    if (value >= 10000000000000LU) { return 14; }
+    if (value >= 1000000000000LU) { return 13; }
+    if (value >= 100000000000LU) { return 12; }
+    return 11;
+}
+ubyte decimalDigitsSizet(const size_t value)
+{
+    pragma(inline, true);
+    static if (size_t.sizeof == uint.sizeof)
+        return decimalDigitsUint(value);
+    else static if (size_t.sizeof == size_t.sizeof)
+        return decimalDigitsUlong(value);
+    else static assert(0);
+}
+
+
+
 /**
 NOTE: this is a "normalization" function to prevent template bloat
 */
 auto printDecimal(T, Printer)(Printer printer, T value)
 {
     pragma(inline, true);
-    auto buffer = printer.getTempBuffer!(
-        1 + // 1 for the '-' character
-        maxDecimalDigits!T);
-    scope (exit) printer.commitBuffer(buffer.commitValue);
 
-    static if (T.sizeof > size_t.sizeof)
-    {
-        static if (T.sizeof > long.sizeof)
-            static assert(0, "printing numbers with this bit width is not implemented");
-        else
-        {
-            alias stype = long;
-            alias utype = ulong;
-        }
-    }
-    else
+    static if (T.sizeof <= size_t.sizeof)
     {
         alias stype = ptrdiff_t;
         alias utype = size_t;
     }
+    else static if (T.sizeof <= ulong.sizeof)
+    {
+        alias stype = long;
+        alias utype = ulong;
+    }
+    else static assert(0, "printing numbers with this bit width is not implemented");
 
     static if (T.min >= 0)
+        return printDecimalSizetOrUlong(printer, cast(utype)value);
+    else
+        return printDecimalPtrdifftOrLong!(stype, utype)(printer, cast(stype)value);
+}
+auto printDecimalSizetOrUlong(T, Printer)(Printer printer, T value)
+if (is(T == size_t) || is(T == ulong))
+{
+    static if (is(Printer == CalculateSizePrinter*))
     {
-        buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)value);
+        static if (is(T == size_t))
+            printer.size += decimalDigitsSizet(value);
+        else
+            printer.size += decimalDigitsUlong(value);
     }
     else
     {
+        auto buffer = printer.getTempBuffer!(maxDecimalDigits!T);
+        scope (exit) printer.commitBuffer(buffer.commitValue);
+        buffer.ptr = sizetOrUlongToDecimal(buffer.ptr, value);
+    }
+    return Printer.success;
+}
+auto printDecimalPtrdifftOrLong(T, TUnsigned, Printer)(Printer printer, T value)
+if (is(T == ptrdiff_t) || is(T == long))
+{
+    static if (is(Printer == CalculateSizePrinter*))
+    {
+        if (value < 0)
+        {
+            printer.size++;
+            value = -value;
+        }
+        static if (is(T == ptrdiff_t))
+            printer.size += decimalDigitsSizet(cast(TUnsigned)value);
+        else
+            printer.size += decimalDigitsUlong(cast(TUnsigned)value);
+    }
+    else
+    {
+        auto buffer = printer.getTempBuffer!(
+            1 + // 1 for the '-' character
+            maxDecimalDigits!T);
+        scope (exit) printer.commitBuffer(buffer.commitValue);
         if (value < 0)
         {
             buffer.ptr[0] = '-';
             buffer.ptr++;
-            buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)(-cast(stype)value));
+            value = -value;
         }
-        else
-        {
-            buffer.ptr = printDecimalTemplate!utype(buffer.ptr, cast(utype)value);
-        }
+        buffer.ptr = sizetOrUlongToDecimal(buffer.ptr, cast(TUnsigned)value);
     }
     return Printer.success;
 }
-
-unittest
-{
-    import mar.array : aequals;
-    char[50] buffer;
-    char[] str(T)(T num)
-    {
-        auto result = buffer[0 .. sprint(buffer, num)];
-        import mar.stdio; stdout.writeln("TestNumber: ", result);
-        return result;
-    }
-
-    assert(aequals(str(short.min), "-32768"));
-    assert(aequals(str(short.max), "32767"));
-    assert(aequals(str(ushort.min), "0"));
-    assert(aequals(str(ushort.max), "65535"));
-    assert(aequals(str(int.min), "-2147483648"));
-    assert(aequals(str(int.max), "2147483647"));
-    assert(aequals(str(uint.min), "0"));
-    assert(aequals(str(uint.max), "4294967295"));
-
-    // TODO: remove this static if when all integer sizes are implemented
-    static if (long.sizeof <= size_t.sizeof)
-    {
-        assert(aequals(str(long.min), "-9223372036854775808"));
-        assert(aequals(str(long.max), "9223372036854775807"));
-        assert(aequals(str(ulong.min), "0"));
-        assert(aequals(str(ulong.max), "18446744073709551615"));
-    }
-}
-
-alias printDecimalSizet = printDecimalTemplate!size_t;
-char* printDecimalTemplate(T)(char* buffer, T value)
+char* sizetOrUlongToDecimal(T)(char* buffer, T value) if (is(T == size_t) || is(T == ulong))
 {
     import mar.array : areverse;
-
     if (value == 0)
     {
         buffer[0] = '0';
@@ -168,44 +225,64 @@ char* printDecimalTemplate(T)(char* buffer, T value)
     }
 }
 
+unittest
+{
+    testFormattedValue("-32768", short.min);
+    testFormattedValue("32767", short.max);
+    testFormattedValue("0", ushort.min);
+    testFormattedValue("65535", ushort.max);
+    testFormattedValue("-2147483648", int.min);
+    testFormattedValue("2147483647", int.max);
+    testFormattedValue("0", uint.min);
+    testFormattedValue("4294967295", uint.max);
+    testFormattedValue("-9223372036854775808", long.min);
+    testFormattedValue("9223372036854775807", long.max);
+    testFormattedValue("0", ulong.min);
+    testFormattedValue("18446744073709551615", ulong.max);
+}
+
 immutable hexTableLower = "0123456789abcdef";
 immutable hexTableUpper = "0123456789ABCDEF";
 auto printHex(T, Printer)(Printer printer, T value)
 {
-    import mar.array : areverse;
-
-    auto buffer = printer.getTempBuffer!(
-        1 +          // 1 for the '-' character
-        T.sizeof * 2 //max hex digits
-        );
-    scope (exit) printer.commitBuffer(buffer.commitValue);
-
-    static if (T.sizeof > size_t.sizeof)
-    {
-        static if (T.sizeof > ulong.sizeof)
-            static assert(0, "printing numbers with this bit width is not implemented");
-        else
-        {
-            alias utype = ulong;
-        }
-    }
-    else
-    {
+    pragma(inline, true);
+    static if (T.sizeof <= size_t.sizeof)
         alias utype = size_t;
-    }
+    else static if (T.sizeof <= ulong.sizeof)
+        alias utype = ulong;
+    else static assert(0, "printing numbers with this bit width is not implemented");
 
-    static if (T.min < 0)
-        static assert(0, "printing signed hex values not implemented");
+    return printHexSizetOrUlong(printer, cast(utype)value);
+}
+auto printHexSizetOrUlong(T, Printer)(Printer printer, T value) if (is(T == size_t) || is(T == ulong))
+{
+    static if (is(Printer == CalculateSizePrinter*))
+    {
+        auto next = value.max;
+        auto hexDigitCount = value.sizeof * 2;
+        for (;value < next; next >>= 8, hexDigitCount -= 2)
+        { }
+        next >>= 4;
+        if (value < next)
+            hexDigitCount--;
+        if (hexDigitCount == 0)
+            hexDigitCount = 1;
+        printer.size += hexDigitCount;
+    }
     else
     {
-        buffer.ptr = printHexTemplate!utype(buffer.ptr, cast(utype)value);
+        auto buffer = printer.getTempBuffer!(
+            1 +          // 1 for the '-' character
+            T.sizeof * 2 //max hex digits
+            );
+        scope (exit) printer.commitBuffer(buffer.commitValue);
+        buffer.ptr = sizetOrUlongToHex!T(buffer.ptr, value);
     }
     return Printer.success;
 }
-private char* printHexTemplate(T)(char* buffer, T value)
+private char* sizetOrUlongToHex(T)(char* buffer, T value) if (is(T == size_t) || is(T == ulong))
 {
     import mar.array : areverse;
-
     auto start = buffer;
     for (;;)
     {
@@ -413,9 +490,7 @@ auto formatHex(T)(T value)
 }
 unittest
 {
-    char[50] buf;
-    sprint(buf, formatHex(10));
-    assert(buf[0 .. 1] == "a");
+    testFormattedValue("a", 10.formatHex);
 }
 
 unittest
@@ -429,20 +504,6 @@ unittest
         auto print(P)(P printer) const
         {
             return printArgs(printer, x, ',', y);
-            /*
-            import mar.print;
-            {
-                auto result = printDecimal(printer, x);
-                if (result.failed)
-                    return result;
-            }
-            {
-                auto result = printer.putc(',');
-                if (result.failed)
-                    return result;
-            }
-            return printDecimal(printer, y);
-            */
         }
         auto formatHex() const
         {
@@ -459,13 +520,104 @@ unittest
         }
     }
 
-    char[40] buf;
     auto p = Point(10, 18);
-    assert(5 == sprint(buf, p));
-    assert(aequals("10,18", buf.ptr));
-    assert(8 == sprint(buf, p.formatHex));
-    assert(aequals("0xa,0x12", buf.ptr));
+    testFormattedValue("10,18", p);
+    testFormattedValue("0xa,0x12", p.formatHex);
 }
+
+
+private struct FormatMany(T)
+{
+    size_t count;
+    T value;
+    auto print(P)(P printer) const
+    {
+        static if (is(T == char))
+            return printOneCharManyTimes(printer, count, value);
+        else static assert(0, "FormatMany!(" ~ T.stringof ~ ") not implemented");
+    }
+}
+// TODO: implement more than just one character
+auto formatMany(char c, size_t count)
+{
+    return FormatMany!char(count, c);
+}
+auto printOneCharManyTimes(P)(P printer, size_t n, char c)
+{
+    char[100] buffer; // Is this a good size? Maybe use alloca with a max size?
+    if (n < buffer.length)
+        buffer[0 .. n] = c;
+    else
+        buffer[] = c;
+    for (;n >= buffer.length; n -= buffer.length)
+    {
+        auto result = printer.put(buffer);
+        if (result.failed)
+            return result;
+    }
+    if (n > 0)
+    {
+        auto result = printer.put(buffer[0 .. n]);
+        if (result.failed)
+            return result;
+    }
+    return printer.success;
+}
+unittest
+{
+    testFormattedValue("", 'a'.formatMany(0));
+    testFormattedValue("a", 'a'.formatMany(1));
+    testFormattedValue("aa", 'a'.formatMany(2));
+    testFormattedValue("aaa", 'a'.formatMany(3));
+    testFormattedValue("aaaaaaaaaa", 'a'.formatMany(10));
+}
+
+
+private struct FormatPadLeft(T)
+{
+    T value;
+    size_t width;
+    char padChar;
+    auto print(P)(P printer) const
+    {
+        const size = getPrintSize(value);
+        if (size < width)
+        {
+            auto result = printOneCharManyTimes(printer, width - size, padChar);
+            if (result.failed)
+                return result;
+        }
+        return printArg(printer, value);
+    }
+}
+auto formatPadLeft(T)(T value, size_t width, char padChar)
+{
+    return FormatPadLeft!T(value, width, padChar);
+}
+
+unittest
+{
+    testFormattedValue("0", 0.formatPadLeft(0, '0'));
+    testFormattedValue("0", 0.formatPadLeft(1, '0'));
+    testFormattedValue("00", 0.formatPadLeft(2, '0'));
+
+    testFormattedValue("1", 1.formatPadLeft(0, '0'));
+    testFormattedValue("1", 1.formatPadLeft(1, '0'));
+    testFormattedValue("01", 1.formatPadLeft(2, '0'));
+    testFormattedValue("001", 1.formatPadLeft(3, '0'));
+
+    testFormattedValue("-1", (-1).formatPadLeft(0, 'Z'));
+    testFormattedValue("-1", (-1).formatPadLeft(1, 'Z'));
+    testFormattedValue("-1", (-1).formatPadLeft(2, 'Z'));
+    testFormattedValue("Z-1", (-1).formatPadLeft(3, 'Z'));
+    testFormattedValue("ZZ-1", (-1).formatPadLeft(4, 'Z'));
+
+    testFormattedValue("0", 0.formatHex.formatPadLeft(0, '0'));
+    testFormattedValue("0", 0.formatHex.formatPadLeft(1, '0'));
+    testFormattedValue("00", 0.formatHex.formatPadLeft(2, '0'));
+    // TODO: add more tests?
+}
+
 
 struct StringPrinter
 {
@@ -557,11 +709,36 @@ size_t getPrintSize(T...)(T args)
     return printer.size;
 }
 
-size_t sprint(T...)(char[] buffer, T args)
+/**
+Does not return errors, user is responsible for making sure buffer is
+large enough.  Otherwise, should result in an array out of bounds error.
+*/
+size_t sprintJustReturnSize(T...)(char[] buffer, T args)
 {
     auto printer = StringPrinter(buffer, 0);
     printArgs(&printer, args);
     return printer.bufferedLength;
+}
+size_t sprintSentinelJustReturnSize(T...)(char[] buffer, T args)
+{
+    auto printer = StringPrinter(buffer, 0);
+    printArgs(&printer, args, '\0');
+    return printer.bufferedLength - 1;
+}
+
+/// ditto
+char[] sprint(T...)(char[] buffer, T args)
+{
+    pragma(inline, true);
+
+    return buffer[0 .. sprintJustReturnSize(buffer, args)];
+}
+SentinelArray!char sprintSentinel(T...)(char[] buffer, T args)
+{
+    pragma(inline, true);
+    import mar.sentinel : assumeSentinel;
+
+    return buffer[0 .. sprintSentinelJustReturnSize(buffer, args)].assumeSentinel;
 }
 
 char[] sprintMallocNoSentinel(T...)(T args)
@@ -572,7 +749,7 @@ char[] sprintMallocNoSentinel(T...)(T args)
     auto buffer = cast(char*)malloc(totalSize);
     if (!buffer)
         return null;
-    const printedSize = sprint(buffer[0 .. totalSize], args);
+    const printedSize = sprintJustReturnSize(buffer[0 .. totalSize], args);
     assert(printedSize == totalSize, "codebug: precalculated print size differed from actual size");
     return buffer[0 .. totalSize];
 }
@@ -581,12 +758,12 @@ SentinelArray!char sprintMallocSentinel(T...)(T args)
     import mar.mem : malloc;
     import mar.sentinel : assumeSentinel;
 
-    auto totalSize = getPrintSize(args);
+    const totalSize = getPrintSize(args);
     auto buffer = cast(char*)malloc(totalSize + 1);
     if (!buffer)
         return SentinelArray!char.nullValue;
-    const printedSize = sprint(buffer[0 .. totalSize], args);
+    const printedSize = sprintJustReturnSize(buffer[0 .. totalSize], args);
     assert(printedSize == totalSize, "codebug: precalculated print size differed from actual size");
-    buffer[totalSize] = '\0';
+    buffer[printedSize] = '\0';
     return buffer[0 .. totalSize].assumeSentinel;
 }

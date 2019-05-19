@@ -24,3 +24,7 @@ extern (Windows) HResult CoCreateInstance(
     const(InterfaceID)* interfaceID,
     void** ppv
 );
+
+extern (Windows) void CoTaskMemFree(
+    void* ptr
+) nothrow @nogc;

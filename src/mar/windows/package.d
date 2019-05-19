@@ -158,6 +158,23 @@ struct Guid
             ~ ", cast(ubyte)0x"  ~ uuid[34 .. 36]
             ~ "])";
     }
+    auto print(P)(P printer) const
+    {
+        import mar.print : printArgs, formatHex, formatPadLeft;
+        return printArgs(printer
+            , a.formatHex.formatPadLeft(8, '0')
+            , "-", b.formatHex.formatPadLeft(4, '0')
+            , "-", c.formatHex.formatPadLeft(4, '0')
+            , "-", d[0].formatHex.formatPadLeft(2, '0'), d[1].formatHex.formatPadLeft(2, '0')
+            , "-"
+            , d[2].formatHex.formatPadLeft(2, '0')
+            , d[3].formatHex.formatPadLeft(2, '0')
+            , d[4].formatHex.formatPadLeft(2, '0')
+            , d[5].formatHex.formatPadLeft(2, '0')
+            , d[6].formatHex.formatPadLeft(2, '0')
+            , d[7].formatHex.formatPadLeft(2, '0')
+        );
+    }
 }
 
 alias ThreadEntry = extern (Windows) uint function(void* param);

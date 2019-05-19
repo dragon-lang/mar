@@ -38,9 +38,10 @@ struct Point
 
 ```D
 // print args into dest buffer
-size_t sprint(T...)(char[] dest, T args);
+char[] sprint(T...)(char[] dest, T args);
+    // use sprintJustReturnSize to just return the size printed in dest
 
-// get print size by printing to a "no-op" printer and tracking the number of character printed
+// get print size by printing to a "no-op" printer and tracking the number of characters printed
 size_t getPrintSize(T...)(T args);
 
 // print and allocate a string for args

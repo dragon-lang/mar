@@ -33,6 +33,18 @@ struct InterfaceID
     private Guid guid;
 }
 
+mixin template InterfaceMixin(alias VTableMixin, T)
+{
+    static struct VTable { mixin VTableMixin!T; }
+    private VTable* vtable;
+    static foreach (func; __traits(allMembers, VTable))
+    {
+        mixin("auto " ~ func ~ "(T...)(T args) {\n"
+            ~ "    return vtable." ~ func ~ "(&this, args);\n"
+            ~ "}\n");
+    }
+}
+
 struct IUnknown
 {
     import mar.windows : HResult;
@@ -49,6 +61,5 @@ struct IUnknown
         extern (Windows) uint function(T* obj) release;
         static assert(release.offsetof == size_t.sizeof * 2);
     }
-    struct VTable { mixin VTableMixin!IUnknown; }
-    VTable* vtable;
+    mixin InterfaceMixin!(VTableMixin, typeof(this));
 }

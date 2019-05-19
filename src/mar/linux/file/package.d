@@ -104,7 +104,8 @@ struct FileD
 
 auto write(T)(FileD fd, T[] buffer) if (T.sizeof == 1)
 {
-    pragma(inline, true);
+    // Error: function `mar.linux.file.write!(immutable(char)).write` cannot inline function
+    //pragma(inline, true);
     return sys_write(fd, cast(const(void)*)buffer.ptr, buffer.length);
 }
 

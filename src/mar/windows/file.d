@@ -108,6 +108,7 @@ struct FileD
 
         char[DefaultBufferedFilePrinterPolicy.bufferLength] buffer;
         auto printer = Printer(this, buffer.ptr, 0);
+        // TODO: check return value
         printArgs(&printer, args);
         printer.flush();
     }

@@ -14,10 +14,10 @@ template ErrorCase(string Name, string ErrorMessageFormat, ErrorFieldTypes...)
 private template ctfeToString(size_t num)
 {
     enum ctfeToString = mixin(function() {
-        import mar.print : maxDecimalDigits, printDecimalSizet;
+        import mar.print : maxDecimalDigits, sizetOrUlongToDecimal;
         auto result = new char[3 + maxDecimalDigits!size_t];
         result[0] = '"';
-        auto end = printDecimalSizet(&result.ptr[1], num);
+        auto end = sizetOrUlongToDecimal(&result.ptr[1], num);
         end[0] = '"';
         end[1] = '\0';
 
@@ -42,7 +42,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
         char[] str(size_t num)
         {
             import mar.print : sprint;
-            return numBuffer[0 .. sprint(numBuffer, num)];
+            return sprint(numBuffer, num);
         }
 
         string code = "static struct " ~ TypeName ~ "\n";
