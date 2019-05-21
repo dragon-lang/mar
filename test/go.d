@@ -4,6 +4,7 @@
 //!version NoStdc
 //!noConfigFile
 //!betterC
+import mar.passfail;
 import mar.enforce;
 import mar.array;
 import mar.mem;
@@ -52,6 +53,11 @@ void loggy_mkdir(cstring dirname)
         .enforce("mkdir '", dirname, "' failed, returned ", Result.val);
 }
 
+void writeSeparator()
+{
+    stdout.writeln("--------------------------------------------------------------------------------");
+}
+
 extern (C) int main(int argc, SentinelPtr!cstring argv, SentinelPtr!cstring envp)
 {
     argc--;
@@ -63,21 +69,33 @@ extern (C) int main(int argc, SentinelPtr!cstring argv, SentinelPtr!cstring envp
     if (!isDir(litPtr!"out"))
         loggy_mkdir(litPtr!"out");
 
+
+    size_t totalModuleCount = 0;
+    size_t failCount = 0;
     if (argc == 0)
     {
         foreach (mod; modules)
         {
-            testModule(mod);
+            if (testModule(mod).failed)
+               failCount++;
+            totalModuleCount++;
         }
     }
     else
     {
         foreach (i; 0 .. argc)
         {
-            testModule(argv[i].walkToArray.array);
+            if (testModule(argv[i].walkToArray.array).failed)
+                failCount++;
+            totalModuleCount++;
         }
     }
-    return 0;
+    writeSeparator();
+    if (failCount == 0)
+        stdout.writeln("Success: all ", totalModuleCount, " modules passed");
+    else
+        stdout.writeln("Error: ", failCount, " out of ", totalModuleCount, " modules failed");
+    return cast(int)failCount;
 }
 
 void logError(T...)(T args)
@@ -171,11 +189,11 @@ auto fileToModuleName(const(char)[] file)
     return buffer[0 .. file.length].assumeSentinel;
 }
 
-void testModule(const(char)[] mod)
+passfail testModule(const(char)[] mod)
 {
-    stdout.writeln("--------------------------------------------------------------------------------");
+    writeSeparator();
     stdout.writeln("Testing module: ", mod);
-    stdout.writeln("--------------------------------------------------------------------------------");
+    writeSeparator();
     auto basename = getBasename(mod);
     auto dirname = sprintMallocSentinel("out/", stripExt(basename));
     if (isDir(dirname.ptr))
@@ -268,6 +286,7 @@ extern (C) int main(uint argc, void* argv, void* envp)
        runArgs[1] = cstring.nullValue;
        waitEnforceSuccess(run(runArgs.ptr.assumeSentinel, envp));
     }
+    return passfail.pass;
 }
 
 version (linux)

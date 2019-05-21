@@ -101,6 +101,11 @@ private T toImpl(T, S)(S value)
 }
 
 
+/+
+Not sure these functions are necessary, since I have mar.print.sprint and family.
+All the logic to print a value is in that module, having that duplicated in this
+API seems to just add complexity.
+
 /***************************************************************
  * Convenience functions for converting one or more arguments
  * of any type into _text (the three character widths).
@@ -128,25 +133,11 @@ private S textImpl(S, U...)(U args)
     }
     else
     {
-        import std.array : appender;
-
-        auto app = appender!S();
-
-        // assume that on average, parameters will have less
-        // than 20 elements
-        app.reserve(U.length * 20);
-
-        foreach (arg; args)
+        static if (is(T == string))
         {
-            static if (
-                is(Unqual!(typeof(arg)) == uint) || is(Unqual!(typeof(arg)) == ulong) ||
-                is(Unqual!(typeof(arg)) == int) || is(Unqual!(typeof(arg)) == long)
-            )
-                app.put(arg.toChars);
-            else
-                app.put(to!S(arg));
+            import mar.print : sprintMalloc;
+            return sprintMallocNoSentinel(args);
         }
-
-        return app.data;
     }
 }
++/

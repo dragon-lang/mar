@@ -11,7 +11,7 @@ template ErrorCase(string Name, string ErrorMessageFormat, ErrorFieldTypes...)
 }
 
 // It's a bit odd but this works with -betterC
-private template ctfeToString(size_t num)
+template ctfeToString(size_t num)
 {
     enum ctfeToString = mixin(function() {
         import mar.print : maxDecimalDigits, sizetOrUlongToDecimal;
@@ -35,17 +35,10 @@ private template ctfeToString(size_t num)
 mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
 {
     private enum mixinCode = function() {
-        import mar.expect : ExpectFormatRange, PrintErrorCaseMixin;
+        import mar.expect : ExpectFormatRange, PrintErrorCaseMixin, ctfeToString;
         import mar.print : maxDecimalDigits;
 
-        char[maxDecimalDigits!size_t + 1] numBuffer;
-        char[] str(size_t num)
-        {
-            import mar.print : sprint;
-            return sprint(numBuffer, num);
-        }
-
-        string code = "static struct " ~ TypeName ~ "\n";
+        auto code = "static struct " ~ TypeName ~ "\n";
         code ~= "{\n";
         code ~= "    enum State\n";
         code ~= "    {\n";
@@ -73,7 +66,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
         }
         static foreach (i, errorCase; ErrorCases)
         {
-            code ~= "    static auto " ~ errorCase.name ~ "(ErrorCases[" ~ str(i) ~ "].errorFieldTypes fields)\n";
+            code ~= "    static auto " ~ errorCase.name ~ "(ErrorCases[" ~ ctfeToString!i ~ "].errorFieldTypes fields)\n";
             code ~= "    {\n";
             if (errorCase.errorFieldTypes.length == 0)
             {
@@ -101,7 +94,7 @@ mixin template ExpectMixin(string TypeName, SuccessType, ErrorCases...)
             {
                 code ~= "        struct\n";
                 code ~= "        {\n";
-                code ~= "            ErrorCases[" ~ str(i) ~ "].errorFieldTypes " ~
+                code ~= "            ErrorCases[" ~ ctfeToString!i ~ "].errorFieldTypes " ~
                     errorCase.name ~ "Fields;\n";
                 code ~= "        }\n";
             }

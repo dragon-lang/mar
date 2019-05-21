@@ -3,6 +3,9 @@ module mar.print;
 import mar.traits : isArithmetic, Unqual;
 import mar.sentinel : SentinelArray;
 
+public import mar.print.printers;
+public import mar.print.sprint;
+
 /**
 Takes a single argument and prints it to the given `printer`.
 The function will try each of the following in order to print the argument
@@ -34,6 +37,8 @@ auto printArg(Printer, T)(Printer printer, T arg)
         return printHex(printer, cast(size_t)arg);
     else static if (is(Unqual!(typeof(arg)) == float))
         return printFloat(printer, arg);
+    else static if (is(Enum == enum))
+        return printEnum(printer, arg);
     else static if (isArithmetic!(typeof(arg)))
     //else static if (__traits(compiles, printDecimal(printer, arg)))
         return printDecimal(printer, arg);
@@ -47,7 +52,7 @@ auto printArgs(Printer, T...)(Printer printer, T args)
 {
     foreach (arg; args)
     {
-        auto result = printArg(printer, arg);
+        const result = printArg(printer, arg);
         if (result.failed)
             return result;
     }
@@ -129,7 +134,6 @@ ubyte decimalDigitsSizet(const size_t value)
 }
 
 
-
 /**
 NOTE: this is a "normalization" function to prevent template bloat
 */
@@ -157,12 +161,12 @@ auto printDecimal(T, Printer)(Printer printer, T value)
 auto printDecimalSizetOrUlong(T, Printer)(Printer printer, T value)
 if (is(T == size_t) || is(T == ulong))
 {
-    static if (is(Printer == CalculateSizePrinter*))
+    static if (Printer.IsCalculateSizePrinter)
     {
         static if (is(T == size_t))
-            printer.size += decimalDigitsSizet(value);
+            printer.addSize(decimalDigitsSizet(value));
         else
-            printer.size += decimalDigitsUlong(value);
+            printer.addSize(decimalDigitsUlong(value));
     }
     else
     {
@@ -175,17 +179,17 @@ if (is(T == size_t) || is(T == ulong))
 auto printDecimalPtrdifftOrLong(T, TUnsigned, Printer)(Printer printer, T value)
 if (is(T == ptrdiff_t) || is(T == long))
 {
-    static if (is(Printer == CalculateSizePrinter*))
+    static if (Printer.IsCalculateSizePrinter)
     {
         if (value < 0)
         {
-            printer.size++;
+            printer.addSize(1);
             value = -value;
         }
         static if (is(T == ptrdiff_t))
-            printer.size += decimalDigitsSizet(cast(TUnsigned)value);
+            printer.addSize(decimalDigitsSizet(cast(TUnsigned)value));
         else
-            printer.size += decimalDigitsUlong(cast(TUnsigned)value);
+            printer.addSize(decimalDigitsUlong(cast(TUnsigned)value));
     }
     else
     {
@@ -256,7 +260,7 @@ auto printHex(T, Printer)(Printer printer, T value)
 }
 auto printHexSizetOrUlong(T, Printer)(Printer printer, T value) if (is(T == size_t) || is(T == ulong))
 {
-    static if (is(Printer == CalculateSizePrinter*))
+    static if (Printer.IsCalculateSizePrinter)
     {
         auto next = value.max;
         auto hexDigitCount = value.sizeof * 2;
@@ -267,7 +271,7 @@ auto printHexSizetOrUlong(T, Printer)(Printer printer, T value) if (is(T == size
             hexDigitCount--;
         if (hexDigitCount == 0)
             hexDigitCount = 1;
-        printer.size += hexDigitCount;
+        printer.addSize(hexDigitCount);
     }
     else
     {
@@ -296,183 +300,6 @@ private char* sizetOrUlongToHex(T)(char* buffer, T value) if (is(T == size_t) ||
         }
     }
 }
-
-auto printFloat(Printer)(Printer printer, float f)
-{
-    import mar.ryu : FLOAT_MAX_CHARS, floatToString;
-
-    auto buffer = printer.getTempBuffer!(FLOAT_MAX_CHARS);
-    scope (exit) printer.commitBuffer(buffer.commitValue);
-    buffer.ptr += floatToString(f, buffer.ptr);
-    return Printer.success;
-}
-
-// TODO: maybe put this somewhere else
-//       a printer could return this type if will not return errors.
-//       an example of this would be a printer that exits on failure instead
-//       of returning the error
-struct CannotFail
-{
-    static bool failed() { pragma(inline, true); return false; }
-}
-
-// Every printer should be able to return a buffer
-// large enough to hold at least some characters for
-// things like printing numbers and such
-//enum MinPrinterBufferLength = 30; ??
-
-struct BufferedFileReturnErrorPrinterPolicy
-{
-    import mar.file : FileD;
-    import mar.expect;
-
-    enum bufferLength = 50;
-
-    mixin ExpectMixin!("PutResult", void,
-        ErrorCase!("writeFailed", "write failed, returned %", ptrdiff_t));
-
-    static PutResult success() { pragma(inline, true); return PutResult.success; }
-    static PutResult writeFailed(FileD dest, size_t writeSize, ptrdiff_t errno)
-    {
-        // TODO: do something with dest/writeSize
-        return PutResult.writeFailed(errno);
-    }
-}
-version (NoExit)
-    alias DefaultBufferedFilePrinterPolicy = BufferedFileReturnErrorPrinterPolicy;
-else
-{
-    alias DefaultBufferedFilePrinterPolicy = BufferedFileExitPrinterPolicy;
-    struct BufferedFileExitPrinterPolicy
-    {
-        import mar.file : FileD;
-
-        enum bufferLength = 50;
-
-        alias PutResult = CannotFail;
-        static CannotFail success() { return CannotFail(); }
-        static CannotFail writeFailed(FileD dest, size_t writeSize, ptrdiff_t returnValue)
-        {
-            import mar.stdio : stderr;
-            import mar.process : exit;
-            stderr.write("Error: write failed! (TODO: print error writeSize and returnValue)");
-            exit(1);
-            assert(0);
-        }
-    }
-}
-
-struct DefaultPrinterBuffer
-{
-    char* ptr;
-    auto commitValue()
-    {
-        return this;
-    }
-    void putc(char c) { pragma(inline, true); ptr[0] = c; ptr++; }
-}
-
-struct BufferedFilePrinter(Policy)
-{
-    import mar.array : acopy;
-    import mar.file : FileD;
-
-    static assert(__traits(hasMember, Policy, "PutResult"));
-    static assert(__traits(hasMember, Policy, "success"));
-    static assert(__traits(hasMember, Policy, "writeFailed"));
-    static assert(__traits(hasMember, Policy, "bufferLength"));
-
-    private FileD fd;
-    private char* buffer;
-    private size_t bufferedLength;
-
-    //
-    // The Printer Interface
-    //
-    alias PutResult = Policy.PutResult;
-    static PutResult success() { return Policy.success; }
-    PutResult flush()
-    {
-        if (bufferedLength > 0)
-        {
-            auto result = fd.tryWrite(buffer, bufferedLength);
-            if (result.failed)
-                return Policy.writeFailed(fd, bufferedLength, result.errorCode/*, result.onFailWritten*/);
-            bufferedLength = 0;
-        }
-        return success;
-    }
-    PutResult put(const(char)[] str)
-    {
-        auto left = Policy.bufferLength - bufferedLength;
-        if (left < str.length)
-        {
-            {
-                auto result = flush();
-                if (result.failed)
-                    return result;
-            }
-            {
-                auto result = fd.tryWrite(str);
-                if (result.failed)
-                    return Policy.writeFailed(fd, str.length, result.errorCode/*, result.onFailWritten*/);
-            }
-        }
-        else
-        {
-            acopy(buffer + bufferedLength, str);
-            bufferedLength += str.length;
-        }
-        return success;
-    }
-    PutResult putc(const char c)
-    {
-        if (bufferedLength == Policy.bufferLength)
-        {
-            auto result = flush();
-            if (result.failed)
-                return result;
-        }
-        buffer[bufferedLength++] = c;
-        return success;
-    }
-
-    /**
-    Example:
-    ---
-    auto buffer = printer.getTempBuffer(10);
-    buffer.ptr[0] = 'a';
-    buffer.ptr[1] = 'b';
-    printer.commitBuffer(buffer.commitValue);
-    ---
-    WARNING: you cannot call other printer functions while
-             using this buffer, like `flush`, `put`.
-    */
-    auto getTempBuffer(size_t size)()
-    {
-        pragma(inline, true);
-        static assert(size <= Policy.bufferLength);
-        auto left = Policy.bufferLength - bufferedLength;
-        if (left < size)
-            flush();
-        return DefaultPrinterBuffer(buffer + bufferedLength);
-    }
-    auto tryGetTempBufferImpl(size_t size)
-    {
-        if (size > Policy.bufferLength)
-            return DefaultPrinterBuffer(null); // can't get a buffer of that size
-        auto left = Policy.bufferLength - bufferedLength;
-        if (left < size)
-            flush();
-        return DefaultPrinterBuffer(buffer + bufferedLength);
-    }
-    void commitBuffer(DefaultPrinterBuffer buf)
-    {
-        bufferedLength = buf.ptr - buffer;
-    }
-}
-
-
 private struct FormatHex(T)
 {
     T value;
@@ -491,6 +318,30 @@ auto formatHex(T)(T value)
 unittest
 {
     testFormattedValue("a", 10.formatHex);
+}
+
+
+auto printFloat(Printer)(Printer printer, float f)
+{
+    import mar.ryu : FLOAT_MAX_CHARS, floatToString;
+
+    auto buffer = printer.getTempBuffer!(FLOAT_MAX_CHARS);
+    scope (exit) printer.commitBuffer(buffer.commitValue);
+    buffer.ptr += floatToString(f, buffer.ptr);
+    return Printer.success;
+}
+
+string printEnum(Enum, Printer)(Printer printer, Enum enumValue) if ( is(Enum == enum) )
+{
+    import mar.conv : asString;
+    const str = asString(enumValue, null);
+    if (str !is null)
+        return printer.put(str);
+    {
+        const result = printArgs(printer, Enum.stringof, '?');
+        if (result.failed)
+            return result;
+    }
 }
 
 unittest
@@ -618,152 +469,11 @@ unittest
     // TODO: add more tests?
 }
 
-
-struct StringPrinter
-{
-    import mar.array : acopy;
-
-    private char[] buffer;
-    private size_t bufferedLength;
-
-    private auto capacity() const { return buffer.length - bufferedLength; }
-    private void enforceCapacity(size_t needed)
-    {
-        assert(capacity >= needed, "StringPrinter capacity is too small");
-    }
-
-    //
-    // The Printer Interface
-    //
-    alias PutResult = CannotFail;
-    static PutResult success() { return CannotFail(); }
-
-    PutResult flush() { pragma(inline, true); return success; }
-    PutResult put(const(char)[] str)
-    {
-        enforceCapacity(str.length);
-        acopy(buffer.ptr + bufferedLength, str);
-        bufferedLength += str.length;
-        return success;
-    }
-    PutResult putc(const char c)
-    {
-        enforceCapacity(1);
-        buffer[bufferedLength++] = c;
-        return success;
-    }
-
-    auto getTempBuffer(size_t size)()
-    {
-        pragma(inline, true);
-        enforceCapacity(size);
-        return DefaultPrinterBuffer(buffer.ptr +  + bufferedLength);
-    }
-    auto tryGetTempBufferImpl(size_t size)
-    {
-        return (capacity < size) ?
-            DefaultPrinterBuffer(null) :
-            DefaultPrinterBuffer(buffer.ptr + bufferedLength);
-    }
-    void commitBuffer(DefaultPrinterBuffer buf)
-    {
-        bufferedLength = buf.ptr - buffer.ptr;
-    }
-}
-
-struct CalculateSizePrinter
-{
-    private size_t size;
-    //
-    // The Printer Interface
-    //
-    alias PutResult = CannotFail;
-    static PutResult success() { return CannotFail(); }
-    PutResult flush() { pragma(inline, true); return CannotFail(); }
-    PutResult put(const(char)[] str) { size += str.length; return CannotFail(); }
-    PutResult putc(const char c) { size++; return CannotFail(); }
-    /+
-    auto getTempBuffer(size_t size)()
-    {
-        pragma(inline, true);
-        enforceCapacity(size);
-        return DefaultPrinterBuffer(buffer.ptr +  + bufferedLength);
-    }
-    auto tryGetTempBufferImpl(size_t size)
-    {
-        return (capacity < size) ?
-            DefaultPrinterBuffer(null) :
-            DefaultPrinterBuffer(buffer.ptr + bufferedLength);
-    }
-    void commitBuffer(DefaultPrinterBuffer buf)
-    {
-        bufferedLength = buf.ptr - buffer.ptr;
-    }
-    +/
-}
-
 size_t getPrintSize(T...)(T args)
 {
-    auto printer = CalculateSizePrinter(0);
+    import mar.print.printers : CalculateSizePrinterSizet;
+
+    auto printer = CalculateSizePrinterSizet(0);
     printArgs(&printer, args);
-    return printer.size;
-}
-
-/**
-Does not return errors, user is responsible for making sure buffer is
-large enough.  Otherwise, should result in an array out of bounds error.
-*/
-size_t sprintJustReturnSize(T...)(char[] buffer, T args)
-{
-    auto printer = StringPrinter(buffer, 0);
-    printArgs(&printer, args);
-    return printer.bufferedLength;
-}
-size_t sprintSentinelJustReturnSize(T...)(char[] buffer, T args)
-{
-    auto printer = StringPrinter(buffer, 0);
-    printArgs(&printer, args, '\0');
-    return printer.bufferedLength - 1;
-}
-
-/// ditto
-char[] sprint(T...)(char[] buffer, T args)
-{
-    pragma(inline, true);
-
-    return buffer[0 .. sprintJustReturnSize(buffer, args)];
-}
-SentinelArray!char sprintSentinel(T...)(char[] buffer, T args)
-{
-    pragma(inline, true);
-    import mar.sentinel : assumeSentinel;
-
-    return buffer[0 .. sprintSentinelJustReturnSize(buffer, args)].assumeSentinel;
-}
-
-char[] sprintMallocNoSentinel(T...)(T args)
-{
-    import mar.mem : malloc;
-
-    auto totalSize = getPrintSize(args);
-    auto buffer = cast(char*)malloc(totalSize);
-    if (!buffer)
-        return null;
-    const printedSize = sprintJustReturnSize(buffer[0 .. totalSize], args);
-    assert(printedSize == totalSize, "codebug: precalculated print size differed from actual size");
-    return buffer[0 .. totalSize];
-}
-SentinelArray!char sprintMallocSentinel(T...)(T args)
-{
-    import mar.mem : malloc;
-    import mar.sentinel : assumeSentinel;
-
-    const totalSize = getPrintSize(args);
-    auto buffer = cast(char*)malloc(totalSize + 1);
-    if (!buffer)
-        return SentinelArray!char.nullValue;
-    const printedSize = sprintJustReturnSize(buffer[0 .. totalSize], args);
-    assert(printedSize == totalSize, "codebug: precalculated print size differed from actual size");
-    buffer[printedSize] = '\0';
-    return buffer[0 .. totalSize].assumeSentinel;
+    return printer.getSize;
 }
