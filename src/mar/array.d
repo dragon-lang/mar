@@ -168,41 +168,42 @@ template ElementSizeForCopy(alias Array)
 acopy - Array Copy
 */
 void acopy(T,U)(T dst, U src) @trusted
-if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
+if (isArrayLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof && dst[0].alignof == src[0].alignof)
 in { assert(dst.length >= src.length, "copyFrom source length larger than destination"); } do
 {
     pragma(inline, true);
     static assert (!__traits(isStaticArray, T), "acopy doest not accept static arrays since they are passed by value");
-
-    import mar.mem : memcpy;
-    memcpy(cast(void*)dst.ptr, cast(void*)src.ptr, src.length * ElementSizeForCopy!dst);
+    import mar.mem : MaxAlignType, alignedMemcpy;
+    alias E = MaxAlignType!(typeof(dst[0]));
+    alignedMemcpy(cast(E*)dst.ptr, cast(const(E)*)src.ptr, src.length * dst[0].sizeof);
 }
 /// ditto
 void acopy(T,U)(T dst, U src) @system
-if (isArrayLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
+if (isArrayLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof && dst[0].alignof == src[0].alignof)
 {
     pragma(inline, true);
     static assert (!__traits(isStaticArray, T), "acopy doest not accept static arrays since they are passed by value");
-
-    import mar.mem : memcpy;
-    memcpy(cast(void*)dst.ptr, cast(void*)src, dst.length * ElementSizeForCopy!dst);
+    import mar.mem : MaxAlignType, alignedMemcpy;
+    alias E = MaxAlignType!(typeof(dst[0]));
+    alignedMemcpy(cast(E*)dst.ptr, cast(const(E)*)src, dst.length * dst[0].sizeof);
 }
 /// ditto
 void acopy(T,U)(T dst, U src) @system
-if (isPointerLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof)
+if (isPointerLike!T && isArrayLike!U && dst[0].sizeof == src[0].sizeof && dst[0].alignof == src[0].alignof)
 {
     pragma(inline, true);
-
-    import mar.mem : memcpy;
-    memcpy(cast(void*)dst, cast(void*)src.ptr, src.length * ElementSizeForCopy!dst);
+    import mar.mem : MaxAlignType, alignedMemcpy;
+    alias E = MaxAlignType!(typeof(dst[0]));
+    alignedMemcpy(cast(E*)dst, cast(const(E)*)src.ptr, src.length * dst[0].sizeof);
 }
 /// ditto
 void acopy(T,U)(T dst, U src, size_t size) @system
-if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof)
+if (isPointerLike!T && isPointerLike!U && dst[0].sizeof == src[0].sizeof && dst[0].alignof == src[0].alignof)
 {
     pragma(inline, true);
-    import mar.mem : memcpy;
-    memcpy(cast(void*)dst, cast(void*)src, size * ElementSizeForCopy!dst);
+    import mar.mem : MaxAlignType, alignedMemcpy;
+    alias E = MaxAlignType!(typeof(dst[0]));
+    alignedMemcpy(cast(E*)dst, cast(const(E)*)src, size * dst[0].sizeof);
 }
 
 /**

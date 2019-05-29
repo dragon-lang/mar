@@ -247,7 +247,6 @@ extern (C) int main(uint argc, void* argv, void* envp)
        cstring[60] compileArgs;
        auto offset = 0;
        compileArgs[offset++] = litPtr!"dmd";
-       compileArgs[offset++] = litPtr!"-betterC";
        compileArgs[offset++] = litPtr!"-conf=";
        compileArgs[offset++] = litPtr!"-version=NoStdc";
        compileArgs[offset++] = litPtr!"-I=../src";
@@ -259,8 +258,15 @@ extern (C) int main(uint argc, void* argv, void* envp)
        compileArgs[offset++] = litPtr!"-i=object";
        compileArgs[offset++] = litPtr!"-i=mar";
        compileArgs[offset++] = mainSourceName.ptr;
+       compileArgs[offset++] = litPtr!"-betterC";
        compileArgs[offset++] = cstring.nullValue;
        waitEnforceSuccess(run(compileArgs.ptr.assumeSentinel, envp));
+       /*
+       // run without -betterC
+       offset--;
+       compileArgs[offset++] = cstring.nullValue;
+       waitEnforceSuccess(run(compileArgs.ptr.assumeSentinel, envp));
+       */
     }
     stdout.writeln("rm '", mainSourceName, "'");
     version (linux)

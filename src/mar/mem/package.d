@@ -1,18 +1,122 @@
 module mar.mem;
 
+import mar.aliasseq;
+
+/// An ordered sequence of unsigned types, on for each size
+alias UnsignedTypes = AliasSeq!(ubyte, ushort, uint, ulong);
+
+/**
+Returns the UnsignedTypes index whose size matches the given size.  This is useful
+since the unsigned index can be used in other sequences, such as the AlignTypes sequence.
+*/
+template UnsignedIndexForSize(ubyte size)
+{
+    static if (size == 1)
+        enum UnsignedIndexForSize = 0;
+    else static if (size == 2)
+        enum UnsignedIndexForSize = 1;
+    else static if (size == 4)
+        enum UnsignedIndexForSize = 2;
+    else static if (size == 8)
+        enum UnsignedIndexForSize = 3;
+    else static assert(0, "there is no unsigned type to accomodate this size");
+}
+
+/**
+Provides the unsigned type that matches the given size.
+1 > ubyte, 2 > ushort, 4 > uint, 8 > ulong
+*/
+alias UnsignedForSize(ubyte size) = UnsignedTypes[UnsignedIndexForSize!size];
+
+// A sequence of unsigned types, where each entry contains the largest possible unsigned
+// type whose `alignof` field is less than or equal to the sizeof field in the corresponding
+// UnsignedTypes sequence at the same positionl.  Typically, this list should match
+// that of the UnsignedTypes list, unless the hardware allows any of the primitive unsigned
+// types to be aligned on smaller boundaries.
+template MaxAlignTypes()
+{
+    private template LargestUnsignedForAlign(ubyte i, ubyte align_)
+    {
+        static if (UnsignedTypes[i].alignof <= align_)
+            alias LargestUnsignedForAlign = UnsignedTypes[i];
+        else static if (i == 0)
+            static assert(0, "no unsigned type to support this small of an align");
+        else
+            alias LargestUnsignedForAlign = LargestUnsignedForAlign!(i - 1, align_);
+    }
+    private template Transform(size_t i)
+    {
+        static if (i >= UnsignedTypes.length)
+            alias Transform = AliasSeq!();
+        else
+            alias Transform = AliasSeq!(LargestUnsignedForAlign!(i, UnsignedTypes[i].sizeof), Transform!(i + 1));
+    }
+    alias MaxAlignTypes = Transform!0;
+}
+
+/**
+Provides the largest unsigned type whose alignof is <= T.alignof.
+*/
+alias MaxAlignType(T) = MaxAlignTypes!()[UnsignedIndexForSize!(T.alignof)];
+
+enum AlignMask(T) = T.alignof - 1;
+
+private bool isAlignedFor(T)(const(void)* ptr)
+{
+    static if (T.alignof == 1)
+    {
+        pragma(inline, true);
+        return true;
+    }
+    else
+    {
+        return (AlignMask!T & cast(size_t)ptr) == 0;
+    }
+}
+private bool isAligned(T)(const T* ptr)
+{
+    pragma(inline, true);
+    return isAlignedFor!T(cast(void*)ptr);
+}
+
+void alignedMemcpy(T)(T* dst, const(T)* src, size_t sizeInBytes)
+if (is(T == MaxAlignType!T))
+in { assert(dst.isAligned); assert(src.isAligned); } do
+{
+    static if (T.sizeof == 1)
+    {
+        pragma(inline, true);
+        memcpy(cast(void*)dst, cast(void*)src, sizeInBytes);
+    }
+    else
+    {
+        for (; sizeInBytes >= T.sizeof; sizeInBytes -= T.sizeof)
+        {
+            *dst = *src;
+            dst++;
+            src++;
+        }
+        foreach (i; 0 .. sizeInBytes)
+        {
+            (cast(ubyte*)dst)[i] = (cast(const(ubyte)*)src)[i];
+        }
+    }
+}
+
 void zero(void* dst, size_t length)
 {
     version (NoStdc)
     {
-        size_t* dstPtr = cast(size_t*)dst;
-        for ( ;length >= size_t.sizeof; dstPtr++, length -= size_t.sizeof)
+        if (dst.isAlignedFor!size_t)
         {
-            dstPtr[0] = 0;
+            for ( ;length >= size_t.sizeof; dst += size_t.sizeof, length -= size_t.sizeof)
+            {
+                (cast(size_t*)dst)[0] = 0;
+            }
         }
-        ubyte* dstPtr2 = cast(ubyte*)dstPtr;
-        for ( ;length > 0; dstPtr2++, length--)
+        foreach (i; 0 .. length)
         {
-            dstPtr2[0] = 0;
+            (cast(ubyte*)dst)[i] = 0;
         }
     }
     else
@@ -22,47 +126,39 @@ void zero(void* dst, size_t length)
         memset(dst, 0, length);
     }
 }
+/*
+TODO: should I keep these?
+void memcpy(T,U)(T* dst, U* src, size_t length)
+if (!is(T == void) && !is(U == void))
+{
+    pragma(inline, true);
+    memcpy(cast(void*)dst, cast(void*)src, length);
+}
+void memmove(T,U)(T* dst, U* src, size_t length)
+if (!is(T == void) && !is(U == void))
+{
+    pragma(inline, true);
+    memmove(cast(void*)dst, cast(void*)src, length);
+}
+*/
 
 version (NoStdc)
 {
-    void memcpy(T,U)(T* dst, U* src, size_t length)
+    void memcpy(void* dst, const(void)* src, size_t length)
     {
-        pragma(inline, true);
-        memcpy(cast(void*)dst, cast(void*)src, length);
-    }
-    void memcpy(void* dst, void* src, size_t length)
-    {
-        // simple implementation, slow, but should work in all cases
+        // TODO: I should probably try all the UniqueTypes in MaxAlignTypes,
+        //       not just size_t.
+        if (dst.isAlignedFor!size_t && src.isAlignedFor!size_t)
+        {
+            alignedMemcpy(cast(size_t*)dst, cast(const(size_t)*)src, length);
+            return;
+        }
         foreach (i; 0 .. length)
         {
             (cast(ubyte*)dst)[i] = (cast(ubyte*)src)[i];
         }
-
-        /*
-        TODO: using a size_t or other type larger than a byte
-              to perform the copy may make since in certain conditions,
-              however, I think that doing so will require alignment to be checked
-              first, so may only make sense for larger lengths.
-        size_t* dstPtr = cast(size_t*)dst;
-        size_t* srcPtr = cast(size_t*)src;
-        for ( ;length >= size_t.sizeof; dstPtr++, srcPtr++, length -= size_t.sizeof)
-        {
-            dstPtr[0] = srcPtr[0];
-        }
-        ubyte* dstPtr2 = cast(ubyte*)dstPtr;
-        ubyte* srcPtr2 = cast(ubyte*)srcPtr;
-        for ( ;length > 0; dstPtr2++, srcPtr2++, length--)
-        {
-            dstPtr2[0] = srcPtr2[0];
-        }
-        */
     }
-    void memmove(T,U)(T* dst, U* src, size_t length)
-    {
-        pragma(inline, true);
-        memmove(cast(void*)dst, cast(void*)src, length);
-    }
-    void memmove(void* dst, void* src, size_t length)
+    void memmove(void* dst, const(void)* src, size_t length)
     {
         // this implementation is simple but also not the fastest it could be
         if (dst < src)
