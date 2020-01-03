@@ -18,8 +18,10 @@ Equivalent to HRESULT
 struct HResult
 {
     private uint value;
-    @property auto passed() const pure nothrow @nogc { return (value & 0x80000000) == 0; }
-    @property auto failed() const pure nothrow @nogc { return (value & 0x80000000) != 0; }
+    @property bool passed() const pure nothrow @nogc { return (value & 0x80000000) == 0; }
+    @property bool failed() const pure nothrow @nogc { return (value & 0x80000000) != 0; }
+    // Check if this is equivalent to S_FALSE
+    @property bool isFalse() const pure nothrow @nogc { return value == 1; }
     // TODO: file/line number also?
     void enforce(E...)(E errorMsgValues) const
     {

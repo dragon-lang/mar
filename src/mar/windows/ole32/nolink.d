@@ -55,11 +55,32 @@ struct IUnknown
     mixin template VTableMixin(T)
     {
         extern (Windows) HResult function(T* obj, const(InterfaceID)* interfaceID, void** object) queryInterface;
-        static assert(queryInterface.offsetof == size_t.sizeof * 0);
         extern (Windows) uint function(T* obj) addRef;
-        static assert(addRef.offsetof == size_t.sizeof * 1);
         extern (Windows) uint function(T* obj) release;
-        static assert(release.offsetof == size_t.sizeof * 2);
+        static assert(queryInterface.offsetof == size_t.sizeof * 0);
+        static assert(addRef.offsetof         == size_t.sizeof * 1);
+        static assert(release.offsetof        == size_t.sizeof * 2);
+    }
+    mixin InterfaceMixin!(VTableMixin, typeof(this));
+    HResult queryInterfaceTo(T)(T** typedObj)
+    {
+        return queryInterface(&T.id, cast(void**)typedObj);
+    }
+}
+
+struct IEnumUnknown
+{
+    import mar.windows : HResult;
+
+    __gshared static immutable id = InterfaceID.fromString!"00000100-0000-0000-C000-000000000046";
+
+    mixin template VTableMixin(T)
+    {
+        mixin IUnknown.VTableMixin!T;
+        extern (Windows) HResult function(T* obj, uint count, IUnknown** arr, uint* arrLength) next;
+        extern (Windows) HResult function(T* obj, uint count) skip;
+        extern (Windows) HResult function(T* obj) reset;
+        extern (Windows) HResult function(T* obj, IEnumUnknown** enumerator) clone;
     }
     mixin InterfaceMixin!(VTableMixin, typeof(this));
 }

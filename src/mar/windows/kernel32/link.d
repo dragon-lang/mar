@@ -20,6 +20,7 @@ extern (Windows) void DebugBreak() @nogc;
 extern (Windows) void ExitProcess(uint) nothrow @nogc;
 extern (Windows) BoolExpectNonZero CloseHandle(Handle) nothrow @nogc;
 
+extern (Windows) Handle GetCurrentProcess();
 extern (Windows) uint GetCurrentThreadId();
 
 enum HeapCreateOptions : uint
